@@ -1,4 +1,4 @@
-from block import Blockchain
+
 import time
 
 MAX_32BIT = 0xffffffff
@@ -14,9 +14,9 @@ class Miner:
             approve = input("Enter signature from {} (y/n): ".format(authority.name))
             if approve == 'y':
                 approvals.append(authority)
-                s = authority.sign_transaction(block.data)
+                s = authority.sign_transaction(block.tx)
                 block.signatures.append(s)
-                if not self.bc.verify_signed_message(block.data, s, authority.signature): 
+                if not self.bc.verify_signed_message(block.tx, s, authority.signature): 
                     print("ERROR: SIGNATURE UNVERIFIED")
 
         if len(approvals) >= self.bc.required_signatures:
