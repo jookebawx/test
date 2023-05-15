@@ -3,7 +3,6 @@ import ecdsa
 import binascii
 import time
 import datetime
-import pickle
 import os
 import json
 
@@ -24,16 +23,16 @@ class BlockEncoder(json.JSONEncoder):
             return obj.__dict__  # Serialize Block object using its dictionary representation
         return json.JSONEncoder.default(self, obj)
 
-# class BlockJSONDecoder(json.JSONDecoder):
-#     def __init__(self, *args, **kwargs):
-#         json.JSONDecoder.__init__(self, object_hook=self.dict_to_block, *args, **kwargs)
+class BlockDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        super().__init__(object_hook=self.dict_to_block, *args, **kwargs)
 
-#     def dict_to_block(self, dct):
-#         if all(k in dct for k in ["index", "bits", "nonce", "prev_hash","transactions", "timestamp", "author", "signatures", "elapsed_time", "block_hash"]):
-#             iso_timestamp = dct["timestamp"].replace('/', '-').replace(' ', 'T')
-#             timestamp = datetime.datetime.fromisoformat(iso_timestamp)
-#             return Block(dct["bits"], dct["index"], dct["transactions"], timestamp, dct["prev_hash"],dct["author"])
-#         return dct
+    def dict_to_block(self, dct):
+        if all(k in dct for k in ["index", "bits", "nonce", "prev_hash","transactions", "timestamp", "author", "signatures", "elapsed_time", "block_hash"]):
+            iso_timestamp = dct["timestamp"].replace('/', '-').replace(' ', 'T')
+            timestamp = datetime.datetime.fromisoformat(iso_timestamp)
+            return Block(dct["bits"], dct["index"], dct["transactions"], timestamp, dct["prev_hash"],dct["author"])
+        return dct
     
 class Block:
     def __init__(self, bits, index, tx, timestamp, prev_hash, author):
@@ -80,6 +79,7 @@ class Block:
         return int(self.generate_hash(),16) <= self.calc_target()
         
 
+
 class Blockchain:
     def __init__(self):
         self.authorities = AUTH
@@ -88,7 +88,7 @@ class Blockchain:
     
     def create_genesis_block(self):
         return Block(INITIAL_BITS,0,"Genesis Block", datetime.datetime.now(), "0000000000", "Shin").to_json()
-
+    
     def get_last_block_hash(self):
        return self.blockchain[-1]["block_hash"]
     
@@ -127,7 +127,7 @@ class Blockchain:
             if len(self.blockchain) < 2:
                 block.prev_hash = "000000000"
             else:
-               block.prev_hash = self.get_last_block_hash()
+               block.prev_hash = self.blockchain[-1].hash
             for n in range(MAX_32BIT + 1):
                 block.nonce = n
                 if block.check_valid_hash():
@@ -136,7 +136,7 @@ class Blockchain:
                         if len(self.blockchain) < 2:
                             block.bits = INITIAL_BITS
                         else:
-                            block.bits = self.get_last_block_bits()
+                            block.bits = self.blockchain[-1].bits
                     else:
                        block.bits = new_bits
                     end_time = int(time.time()*1000)
@@ -157,17 +157,13 @@ class Blockchain:
       else:
         first_block = self.blockchain[0]
       last_block = self.blockchain[-1]
-      
-      iso_timestamp_1 = first_block["timestamp"].replace('/', '-').replace(' ', 'T')
-      first_time = datetime.datetime.fromisoformat(iso_timestamp_1)
-      iso_timestamp_2 = last_block["timestamp"].replace('/', '-').replace(' ', 'T')
-      last_time = datetime.datetime.fromisoformat(iso_timestamp_2)
 
-      total_time = (last_time - first_time).total_seconds()
-      exponent_bytes = (last_block["bits"]>> 24) - 3
-      exponent_bits = exponent_bytes * 8
-      coefficient = last_block["bits"] & 0xffffff
-      target = coefficient << exponent_bits
+      first_time = first_block.timestamp.timestamp()
+      last_time = last_block.timestamp.timestamp()
+      total_time = last_time - first_time
+      
+      target = last_block.calc_target()
+      
       delta = total_time / expected_time
       if delta < 0.25:
         delta = 0.25
@@ -175,7 +171,7 @@ class Blockchain:
         delta = 4
       new_target = int(target * delta)
 
-      exponent_bytes = (last_block["bits"]>> 24) -3
+      exponent_bytes = (last_block.bits >> 24) -3
       exponent_bits = exponent_bytes * 8
       temp_bits = new_target >> exponent_bits
       if temp_bits != temp_bits & 0xffffff:
@@ -212,11 +208,8 @@ class Blockchain:
         try:
             if os.path.getsize("blocks.dat"):
                 with open("blocks.dat", "rb") as f:
-                    content = f.read()
-                    json_data = json.loads(content.decode('utf-8'))
-                    blocks = []
-                    for item in json_data:
-                        blocks.append(item)
+                    blocks_data = json.load(f, cls=BlockDecoder)
+                    blocks = [b for b in blocks_data if isinstance(b, Block)]
             else:
                 blocks = [self.create_genesis_block()]
         except FileNotFoundError:
@@ -227,5 +220,5 @@ class Blockchain:
     def save_block(self,block):
         # Save the blocks to a file
         with open("blocks.dat", "wb") as f:
-            data=json.dumps(block, default = int)
+            data=json.dumps(block, cls = BlockEncoder)
             f.write(data.encode('utf-8'))
