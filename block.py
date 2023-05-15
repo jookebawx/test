@@ -15,19 +15,32 @@ INITIAL_BITS = 0x1e777777
 MAX_32BIT = 0xffffffff
 AUTH = [Wallet("Authority 1"), Wallet("Authority 2"), Wallet("Authority 3")]
 
-            
+
 class BlockEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, Block):
-            return obj.__dict__
+        if isinstance(obj, datetime.datetime):  # Check if the object is a datetime instance
+            return obj.isoformat()  # Serialize datetime object using ISO format
+        elif isinstance(obj, Block):
+            return obj.__dict__  # Serialize Block object using its dictionary representation
         return json.JSONEncoder.default(self, obj)
+
+# class BlockJSONDecoder(json.JSONDecoder):
+#     def __init__(self, *args, **kwargs):
+#         json.JSONDecoder.__init__(self, object_hook=self.dict_to_block, *args, **kwargs)
+
+#     def dict_to_block(self, dct):
+#         if all(k in dct for k in ["index", "bits", "nonce", "prev_hash","transactions", "timestamp", "author", "signatures", "elapsed_time", "block_hash"]):
+#             iso_timestamp = dct["timestamp"].replace('/', '-').replace(' ', 'T')
+#             timestamp = datetime.datetime.fromisoformat(iso_timestamp)
+#             return Block(dct["bits"], dct["index"], dct["transactions"], timestamp, dct["prev_hash"],dct["author"])
+#         return dct
     
 class Block:
-    def __init__(self, bits, index, data, timestamp, prev_hash, author):
+    def __init__(self, bits, index, tx, timestamp, prev_hash, author):
         self.index = index
         self.bits = bits
         self.nonce = 0
-        self.data = data
+        self.tx = tx
         self.prev_hash = prev_hash
         self.author = author
         self.signatures = [Wallet(author).sign_transaction("data")]
@@ -36,9 +49,9 @@ class Block:
         self.hash = ""
 
     def generate_hash(self):
-        data_str = str(self.data)  # convert data to string
+        tx_str = str(self.tx)  # convert data to string
         sign_str = ''.join(self.signatures)  # concatenate signatures
-        block_contents = data_str + self.prev_hash + sign_str + hex(self.bits)[2:] + str(self.nonce)  # concatenate block data
+        block_contents = tx_str + self.prev_hash + sign_str + hex(self.bits)[2:] + str(self.nonce)  # concatenate block data
         h = hashlib.sha256(block_contents.encode()).hexdigest()
         self.hash = h
         return h
@@ -49,8 +62,8 @@ class Block:
         "bits" : self.bits,
         "nonce" : self.nonce,
         "prev_hash" : self.prev_hash, 
-        "stored_data" : self.data,
-        "timestamp" : self.timestamp.strftime("%Y/%m/%d %H:%M:%S"),
+        "transactions" : self.tx,
+        "timestamp" : str(self.timestamp.strftime("%Y/%m/%d %H:%M:%S")),
         "author" : self.author, 
         "signatures" : self.signatures, 
         "elapsed_time":self.elapsed_time,
@@ -66,8 +79,6 @@ class Block:
     def check_valid_hash(self):
         return int(self.generate_hash(),16) <= self.calc_target()
         
-
-    
 
 class Blockchain:
     def __init__(self):
@@ -107,9 +118,9 @@ class Blockchain:
             approve = input("Enter signature from {} (y/n): ".format(authority.name))
             if approve == 'y':
                 approvals.append(authority)
-                s = authority.sign_transaction(block.data)
+                s = authority.sign_transaction(block.tx)
                 block.signatures.append(s)
-                if not self.verify_signed_message(block.data, s, authority.signature): 
+                if not self.verify_signed_message(block.tx, s, authority.signature): 
                     print("ERROR: SIGNATURE UNVERIFIED")
 
         if len(approvals) >= self.required_signatures:
@@ -146,13 +157,17 @@ class Blockchain:
       else:
         first_block = self.blockchain[0]
       last_block = self.blockchain[-1]
+      
+      iso_timestamp_1 = first_block["timestamp"].replace('/', '-').replace(' ', 'T')
+      first_time = datetime.datetime.fromisoformat(iso_timestamp_1)
+      iso_timestamp_2 = last_block["timestamp"].replace('/', '-').replace(' ', 'T')
+      last_time = datetime.datetime.fromisoformat(iso_timestamp_2)
 
-      first_time = first_block.timestamp.timestamp()
-      last_time = last_block.timestamp.timestamp()
-
-      total_time = last_time - first_time
-
-      target = last_block.calc_target()
+      total_time = (last_time - first_time).total_seconds()
+      exponent_bytes = (last_block["bits"]>> 24) - 3
+      exponent_bits = exponent_bytes * 8
+      coefficient = last_block["bits"] & 0xffffff
+      target = coefficient << exponent_bits
       delta = total_time / expected_time
       if delta < 0.25:
         delta = 0.25
@@ -160,7 +175,7 @@ class Blockchain:
         delta = 4
       new_target = int(target * delta)
 
-      exponent_bytes = (last_block.bits >> 24) -3
+      exponent_bytes = (last_block["bits"]>> 24) -3
       exponent_bits = exponent_bytes * 8
       temp_bits = new_target >> exponent_bits
       if temp_bits != temp_bits & 0xffffff:
@@ -214,24 +229,3 @@ class Blockchain:
         with open("blocks.dat", "wb") as f:
             data=json.dumps(block, default = int)
             f.write(data.encode('utf-8'))
-# Example usage:
-# Initialize the blockchain
-
-
-
-
-
-# Add blocks to the chain
-
-#bc.mining(Block(INITIAL_BITS,3,"Data for Block 2",datetime.datetime.now(), "", w.name))
-#bc.mining(Block(INITIAL_BITS,4,"Data for Block 2",datetime.datetime.now(), "", w.name))
-#bc.mining(Block(INITIAL_BITS,5,"Data for Block 2",datetime.datetime.now(), "", w.name))
-#bc.mining(Block(INITIAL_BITS,6,"Data for Block 2",datetime.datetime.now(), "", w.name))
-#blockchain.add_block(Block("Data for Block 3", "", "Authority 3"))
-
-# Display the blocks in the chain
-
-
-
-#1. database
-#2. plus2
