@@ -20,7 +20,7 @@ class BlockEncoder(json.JSONEncoder):
         if isinstance(obj, datetime.datetime):  # Check if the object is a datetime instance
             return obj.isoformat()  # Serialize datetime object using ISO format
         elif isinstance(obj, Block):
-            return obj.__dict__  # Serialize Block object using its dictionary representation
+            return obj.to_json()  # Serialize Block object using its dictionary representation
         return json.JSONEncoder.default(self, obj)
 
 class BlockDecoder(json.JSONDecoder):
@@ -28,7 +28,7 @@ class BlockDecoder(json.JSONDecoder):
         super().__init__(object_hook=self.dict_to_block, *args, **kwargs)
 
     def dict_to_block(self, dct):
-        if all(k in dct for k in ["index", "bits", "nonce", "prev_hash","transactions", "timestamp", "author", "signatures", "elapsed_time", "block_hash"]):
+        if all(k in dct for k in ["index", "bits", "nonce", "prev_hash","transactions", "timestamp", "author", "signatures", "elapsed_time", "hash"]):
             iso_timestamp = dct["timestamp"].replace('/', '-').replace(' ', 'T')
             timestamp = datetime.datetime.fromisoformat(iso_timestamp)
             return Block(dct["bits"], dct["index"], dct["transactions"], timestamp, dct["prev_hash"],dct["author"])
@@ -42,7 +42,7 @@ class Block:
         self.tx = tx
         self.prev_hash = prev_hash
         self.author = author
-        self.signatures = [Wallet(author).sign_transaction("data")]
+        self.signatures = [Wallet(author).sign_transaction(tx)]
         self.timestamp = timestamp
         self.elapsed_time = ""
         self.hash = ""
@@ -66,7 +66,7 @@ class Block:
         "author" : self.author, 
         "signatures" : self.signatures, 
         "elapsed_time":self.elapsed_time,
-        "block_hash" : self.hash
+        "hash" : self.hash
         }
 
     def calc_target(self):
@@ -87,20 +87,20 @@ class Blockchain:
         self.required_signatures = 2
     
     def create_genesis_block(self):
-        return Block(INITIAL_BITS,0,"Genesis Block", datetime.datetime.now(), "0000000000", "Shin").to_json()
+        return Block(INITIAL_BITS,0,"Genesis Block", datetime.datetime.now(), "", "Shin").to_json()
     
     def get_last_block_hash(self):
        return self.blockchain[-1]["block_hash"]
     
-    def get_last_block_bits(self):
-       return self.blockchain[-1]["bits"]
+    def get_block_address(self,block):
+       return block.tx.address
         
     def getblockinfo(self):
        return print(json.dumps(self.blockchain, indent=2,sort_keys=True, ensure_ascii = False, cls = BlockEncoder))
 
     
     def add_block(self, block):
-        self.blockchain.append(block.to_json())
+        self.blockchain.append(block)
         self.save_block(self.blockchain)
 
     
@@ -211,9 +211,9 @@ class Blockchain:
                     blocks_data = json.load(f, cls=BlockDecoder)
                     blocks = [b for b in blocks_data if isinstance(b, Block)]
             else:
-                blocks = [self.create_genesis_block()]
+                blocks = [Block(INITIAL_BITS,1,"Genesis Block", datetime.datetime.now(), "", "Shin")]
         except FileNotFoundError:
-            blocks = [self.create_genesis_block()]
+            blocks = [Block(INITIAL_BITS,1,"Genesis Block", datetime.datetime.now(), "", "Shin")]
         return blocks 
        
      
