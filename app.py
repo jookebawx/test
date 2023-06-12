@@ -15,21 +15,15 @@ app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'samuel201'
 app.config['MYSQL_DB'] = 'db'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+
 app.config['MONGO_URI'] = "mongodb://localhost:27017/local"
 mysql = MySQL(app)
 mongo_client = PyMongo(app)
 mongo_db = mongo_client.db
 
-# @approute("/signup", methods = ['GET', 'POST'])
-# def signup():
-#     from forms import *
-#     form = RegisterForm(request.form)
-#     users = Table("users", "first_name", "last_name", "email", "password")
-#     return render_template('newacc.html')
-
-@app.route("/login")
+@app.route("/login", methods = ['GET', 'POST'])
 def login():
-    pass
+    return render_template('login.html')
 
 @app.route("/signup", methods = ['GET', 'POST'])
 def signup():
@@ -62,12 +56,6 @@ def homepage():
 
 @app.route("/")
 def index():
-    from sqlhelper import Table
-    # form = RegisterForm(request.form)
-    users = Table("users", "first_name", "last_name", "email", "password")
-    # if request.method == 'POST' and form.validate():
-    #     pass
-
     return render_template('newacc.html')
 
 if __name__== '__main__':
