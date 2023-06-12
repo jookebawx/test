@@ -8,6 +8,7 @@ import datetime
 
 from block import Block
 from tx import Transaction
+
 INITIAL_BITS = 0x1e777777
 
 class BlockDecoder(json.JSONDecoder):
@@ -41,7 +42,7 @@ def load_blocks():
 chain = load_blocks()
 
 class Wallet:
-    def __init__(self, name, pr_type):
+    def __init__(self, name, pr_type,):
         self.name = name
         self.pr_type = pr_type
         self.private_key = ecdsa.SigningKey.generate(curve = ecdsa.SECP256k1)  # generate a new private key
@@ -49,6 +50,7 @@ class Wallet:
         self.address = self.generate_address()
         self.signature = self.public_key.hex()
         self.balance = 0
+        
 
 
     def generate_address(self):
@@ -67,6 +69,14 @@ class Wallet:
         wallet_address = base58.b58encode(extended_hash)
         return wallet_address
     
+    # def create_wallet(self):
+    #     return Transaction({
+    #     "type" : "create_account",
+    #     "pr_type": self.pr_type,
+    #     "address" : str(self.address),
+    #     "balance": self.balance,
+    #     }).to_json()
+
     def create_wallet(self):
         return Transaction({
         "type" : "create_account",
