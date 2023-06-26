@@ -4,14 +4,19 @@ from app import mysql
 class Table():
     def __init__(self, table_name, *args):
         self.table = table_name
-        self.columns = "(%s)" %",".join(args)
+        self.columns =  "(" + ", ".join("%s" % col for col in args) + ")"
         self.columnsList = args
+        self.columnforinsert = "(" + ", ".join("%s" % col for col in args[:-1]) + ")"
+    
 
         #if table does not already exist, create it.
         if isnewtable(table_name):
             create_data = ""
             for column in self.columnsList:
-                create_data += "%s varchar(100)," %column
+                if column == "id":
+                    create_data += "%s INT AUTO_INCREMENT PRIMARY KEY," %column
+                else:
+                    create_data += "%s varchar(100)," %column
 
             cur = mysql.connection.cursor() #create the table
             cur.execute("CREATE TABLE %s(%s)" %(self.table, create_data[:len(create_data)-1]))
@@ -30,7 +35,13 @@ class Table():
         result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
         if result > 0: data = cur.fetchone()
         cur.close(); return data
-
+    
+    def getid(self, search, value):
+        data = {}; cur = mysql.connection.cursor()
+        result = cur.execute("SELECT id FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
+        if result > 0: data = cur.fetchone()
+        cur.close(); return data
+    
     #delete a value from the table based on column's data
     def deleteone(self, search, value):
         cur = mysql.connection.cursor()
@@ -51,13 +62,15 @@ class Table():
     #insert values into the table
     def insert(self, *args):
         data = ""
-        for arg in args: #convert data into string mysql format
-            data += "\"%s\"," %(arg)
-
+        for arg in args:
+            data += "\'%s\'," %(arg)
+        
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO %s%s VALUES(%s)" %(self.table, self.columns, data[:len(data)-1]))
+        cur.execute("INSERT INTO %s %s VALUES (%s)" %(self.table, self.columnforinsert, data[:-1]))
         mysql.connection.commit()
         cur.close()
+
+
 
 def sql_raw(execution):
     cur = mysql.connection.cursor()
@@ -74,4 +87,11 @@ def isnewtable(table_name):
         return True
     else:
         return False
+    
+def isnewuser(email):
+    users = Table("users", "first_name", "last_name", "email", "password","id")
+    data = users.getall()
+    emails = [user.get('email') for user in data]
+
+    return False if email in emails else True
 # users = Table("users", "first_name", "last_name", "email", "password")
