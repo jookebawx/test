@@ -128,7 +128,6 @@
     }
     </style>
 <div>
-    <span onclick="document.getElementById('id01').style.display='none'" class="close" title="Close Modal">&times;</span>
     <form method = "POST"  action="">
       <div class="container">
         <h1>Sign Up</h1>
@@ -146,13 +145,13 @@
         <input type="text" id="inputEmail" name="email" class="form-control" placeholder="Email" required="required" autofocus="autofocus" value={{request.form.email}}>
         
         
-        
-        <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="required" autofocus="autofocus" value={{request.form.password}}>
         <label for="psw"><b>Password</b></label>
+        <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="required" autofocus="autofocus" value={{request.form.password}}>
+       
         
-        
-        <input type="password" id="confirmPassword" name="confirm" class="form-control" placeholder="Confirm Password" required="required" autofocus="autofocus" value={{request.form.confirm}}>
         <label for="psw-repeat"><b>Repeat Password</b></label>
+        <input type="password" id="confirmPassword" name="confirm" class="form-control" placeholder="Confirm Password" required="required" autofocus="autofocus" value={{request.form.confirm}}>
+        
         
         <label>
           <input type="checkbox" checked="checked" name="remember" style="margin-bottom:15px"> Remember me
