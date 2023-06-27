@@ -2,17 +2,18 @@ from flask import Flask, render_template, flash, redirect, url_for, session, req
 from passlib.hash import sha256_crypt
 from flask_mysqldb import MySQL
 from flask_pymongo import PyMongo
-
+import os
+import qrcode
 from wallet import Wallet
 from bc import Blockchain
 from tx import Transaction
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'samuel201'
+app.config['MYSQL_PASSWORD'] = 'password'
 app.config['MYSQL_DB'] = 'db'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
@@ -32,11 +33,13 @@ def log_in_user(email):
     session['name'] =  user.get('first_name')+ " "+user.get('last_name')
     session['login_id'] = user.get('id')
 
-@app.route("/wallet", methods = ['GET', 'POST'])
+
+@app.route("/wallet", methods=['GET', 'POST'])
 def wallet_page():
-    login_id=session['login_id']
+    login_id = session['login_id']
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
     name = session['name']
+
     return render_template('wallet.html', wallet=wallet, name=name)
 
 # @app.route("/logout", methods = ['GET', 'POST'])
@@ -51,7 +54,7 @@ def login():
         email = request.form['email']
         candidate = request.form['password']
 
-        users = Table("users", "first_name", "last_name", "email", "password")
+        users = Table("users", "first_name", "last_name", "email", "password","id")
         user = users.getone("email", email)
         accpass= user.get('password')
 
@@ -69,11 +72,15 @@ def login():
 
     return render_template('login.html')
 
+@app.route("/upload")
+def upload():
+    return render_template('Submitpage.html')
+
 @app.route("/logout")
 def logout():
     session.clear()
     flash("Logout success", "success")
-    return redirect(url_for('newacc'))
+    return redirect(url_for('index'))
 
 @app.route("/signup", methods = ['GET', 'POST'])
 def signup():
@@ -96,7 +103,7 @@ def signup():
             print(login_id)
             mongo_db.wallets.insert_one({
                 "login_id": login_id,
-                "private key" : str(wallet.private_key.to_string().hex()),
+                "private_key" : str(wallet.private_key.to_string().hex()),
                 "public_key" : str(wallet.signature),
                 "address" : str(wallet.address),
                 "balance" : wallet.balance
