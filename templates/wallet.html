@@ -1,6 +1,8 @@
 <html>
     <body>
         <h1>Hello {{name}}</h1>
+        <p>private key: {{ wallet.private_key }}</p>
+        <p>public key: {{ wallet.public_key }}</p>
         <p>address: {{ wallet.address[2:] }}</p>
         <p>balance: {{ wallet.balance }}</p>
     </body>
