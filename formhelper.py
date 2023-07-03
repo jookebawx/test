@@ -8,5 +8,5 @@ class RegisterForm(Form):
     confirm = PasswordField('confirm password')
 
 class SendMoneyForm(Form):
-    address = StringField('address', [validators.Length(min=1, max=100)])
+    receiver = StringField('receiver', [validators.Length(min=1, max=100)])
     amount = StringField('amount',[validators.Length(min=1, max=100)])

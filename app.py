@@ -38,11 +38,13 @@ def wallet_page():
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
     updated_tx = get_transaction(wallet["address"])
     update_tx_cmd = {"$set": {"transaction": updated_tx}}
+    mongo_db.wallets.update_one(wallet, update_tx_cmd)
+    wallet = mongo_db.wallets.find_one({'login_id': login_id})
     updated_balance = update_balance(updated_tx, wallet["address"])
     update_balance_cmd = {"$set": {"balance": updated_balance}}
-    mongo_db.wallets.update_one(wallet, update_tx_cmd)
     mongo_db.wallets.update_one(wallet, update_balance_cmd)
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
+    
     name = session['name']
     return render_template('wallet.html', wallet=wallet, name=name)
 
@@ -52,12 +54,17 @@ def send():
     form = SendMoneyForm(request.form)
     login_id=session['login_id']
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
-    # if request.method == 'POST' and form.validate():
-    #     tx ={
-    #         "receiver": form.address,
-    #         "amount": form.amount
-    #     }
-    #     chain.mining(Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", wallet["address"]))
+    if request.method == 'POST' and form.validate():
+        receiver_address = request.form['address']
+        amount = request.form['amount']
+        print(receiver_address)
+        tx ={
+            "receiver": receiver_address,
+            "amount": int(amount)
+        }
+
+        print(1)
+        chain.mining(Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", wallet["address"]))
     return render_template('send.html', wallet=wallet)
 @app.route("/login", methods = ['GET', 'POST'])
 def login():
