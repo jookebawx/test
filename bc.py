@@ -31,55 +31,14 @@ class BlockDecoder(json.JSONDecoder):
         if all(k in dct for k in ["index", "bits", "nonce", "prev_hash","transactions", "timestamp", "author", "signatures", "elapsed_time", "hash"]):
             iso_timestamp = dct["timestamp"].replace('/', '-').replace(' ', 'T')
             timestamp = datetime.datetime.fromisoformat(iso_timestamp)
-            return Block(dct["bits"], dct["index"], dct["transactions"], timestamp, dct["prev_hash"],dct["author"])
+            b=Block(dct["bits"], dct["index"], dct["transactions"], timestamp, dct["prev_hash"],dct["author"])
+            b.signatures = dct["signatures"]
+            b.hash = dct["hash"]
+            b.elapsed_time = dct["elapsed_time"]
+            return b
         return dct
-    
-# class Block:
-#     def __init__(self, bits, index, tx, timestamp, prev_hash, author):
-#         self.index = index
-#         self.bits = bits
-#         self.nonce = 0
-#         self.tx = tx
-#         self.prev_hash = prev_hash
-#         self.author = author
-#         self.signatures = [Wallet(author,0).sign_transaction(tx)]
-#         self.timestamp = timestamp
-#         self.elapsed_time = ""
-#         self.hash = ""
 
-#     def generate_hash(self):
-#         tx_str = str(self.tx)  # convert data to string
-#         sign_str = ''.join(self.signatures)  # concatenate signatures
-#         block_contents = tx_str + self.prev_hash + sign_str + hex(self.bits)[2:] + str(self.nonce)  # concatenate block data
-#         h = hashlib.sha256(block_contents.encode()).hexdigest()
-#         self.hash = h
-#         return h
-
-#     def to_json(self):
-#       return {
-#         "index" : self.index,
-#         "bits" : self.bits,
-#         "nonce" : self.nonce,
-#         "prev_hash" : self.prev_hash, 
-#         "transactions" : self.tx,
-#         "timestamp" : str(self.timestamp.strftime("%Y/%m/%d %H:%M:%S")),
-#         "author" : self.author, 
-#         "signatures" : self.signatures, 
-#         "elapsed_time":self.elapsed_time,
-#         "hash" : self.hash
-#         }
-
-#     def calc_target(self):
-#         exponent_bytes = (self.bits >> 24) - 3
-#         exponent_bits = exponent_bytes * 8
-#         coefficient = self.bits & 0xffffff
-#         return coefficient << exponent_bits
-
-#     def check_valid_hash(self):
-#         return int(self.generate_hash(),16) <= self.calc_target()
         
-
-
 class Blockchain:
     def __init__(self):
         self.authorities = AUTH
@@ -210,9 +169,9 @@ class Blockchain:
                     blocks_data = json.load(f, cls=BlockDecoder)
                     blocks = [b for b in blocks_data if isinstance(b, Block)]
             else:
-                blocks = [Block(INITIAL_BITS,0,Transaction({"type":"Genesis Block"}).to_json(), datetime.datetime.now(), "", "Shin")]
+                blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
         except FileNotFoundError:
-            blocks = [Block(INITIAL_BITS,0,Transaction({"type":"Genesis Block"}).to_json(), datetime.datetime.now(), "", "Shin")]
+            blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
         return blocks 
        
      
