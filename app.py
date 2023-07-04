@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'samuel201'
+app.config['MYSQL_PASSWORD'] = 'password'
 app.config['MYSQL_DB'] = 'db'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
@@ -51,21 +51,32 @@ def wallet_page():
 @app.route("/send", methods = ['GET', 'POST'])
 def send():
     from formhelper import SendMoneyForm
+
     form = SendMoneyForm(request.form)
     login_id=session['login_id']
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
+   
     if request.method == 'POST' and form.validate():
-        receiver_address = request.form['address']
-        amount = request.form['amount']
+        receiver_address = form.receiver.data
+        amount = form.amount.data
         print(receiver_address)
         tx ={
             "receiver": receiver_address,
             "amount": int(amount)
         }
 
-        print(1)
         chain.mining(Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", wallet["address"]))
-    return render_template('send.html', wallet=wallet)
+        updated_tx = get_transaction(wallet["address"])
+        update_tx_cmd = {"$set": {"transaction": updated_tx}}
+        mongo_db.wallets.update_one(wallet, update_tx_cmd)
+        wallet = mongo_db.wallets.find_one({'login_id': login_id})
+        updated_balance = update_balance(updated_tx, wallet["address"])
+        update_balance_cmd = {"$set": {"balance": updated_balance}}
+        mongo_db.wallets.update_one(wallet, update_balance_cmd)
+        wallet = mongo_db.wallets.find_one({'login_id': login_id})
+
+    return render_template('send.html', wallet=wallet, form=form)
+
 @app.route("/login", methods = ['GET', 'POST'])
 def login():
     from sqlhelper import Table
@@ -90,6 +101,10 @@ def login():
                 return redirect(url_for('login'))
 
     return render_template('login.html')
+
+@app.route("/upload", methods = ['GET', 'POST'])
+def upload():
+    return render_template('SubmitPage.html')
 
 @app.route("/logout")
 def logout():
