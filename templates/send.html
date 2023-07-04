@@ -132,6 +132,7 @@
       <div class="container">
         <h1>Send to someone</h1>
         <h1>Current Balance = {{wallet.balance}} SC</h1>
+
         <label for="address"><b>Receiver's Address</b></label>
         <input type="text" id="inputAddress" name="address" class="form-control" placeholder="address" required="required" autofocus="autofocus" value={{request.form.address}}>
         
@@ -145,6 +146,6 @@
       </div>
     </form>
       
-   <button type="button" onclick="history.back()" class="cancelbtn">Cancel</form></button>
+    <a href ="/homepage">Back</a>
 </div>
 </html>
