@@ -132,8 +132,8 @@
       <div class="container">
         <h1>Sign Up</h1>
         <p>Create an account.</p>
+        
         <hr>
-
         <label for="fname"><b>First Name</b></label>
         <input type="text" id="inputFirstName" name="first_name" class="form-control" placeholder="First Name" required="required" autofocus="autofocus" value={{request.form.first_name}}>
 
@@ -144,8 +144,14 @@
         <label for="email"><b>Email</b></label>
         <input type="text" id="inputEmail" name="email" class="form-control" placeholder="Email" required="required" autofocus="autofocus" value={{request.form.email}}>
         
-        
-        <label for="psw"><b>Password</b></label>
+        <label for="authentication type select"><b>Select account type<br></b></label>
+        <select id="authentication type select" name="auth_type">
+          <option value="">--Please choose an option--</option>
+          <option value="auth">Authenticator</option>
+          <option value="regular">Regular User</option>
+        </select>
+        <br>
+        <label for="psw"><b><br>Password</b></label>
         <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="required" autofocus="autofocus" value={{request.form.password}}>
        
         
@@ -164,7 +170,7 @@
         </div>
       </div>
     </form>
-      
+    <p>{{message}}</p>
    <button type="button" onclick="history.back()" class="cancelbtn">Cancel</form></button>
 </div>
 </html>
