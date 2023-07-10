@@ -2,6 +2,7 @@ from flask import Flask, render_template, flash, redirect, url_for, session, req
 from passlib.hash import sha256_crypt
 from flask_mysqldb import MySQL
 from flask_pymongo import PyMongo
+import hashlib
 
 from wallet import *
 from bc import Blockchain
@@ -12,7 +13,7 @@ app = Flask(__name__)
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'password'
+app.config['MYSQL_PASSWORD'] = 'samuel201'
 app.config['MYSQL_DB'] = 'db'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
@@ -31,6 +32,16 @@ def log_in_user(email):
     session['email'] =  email
     session['name'] =  user.get('first_name')+ " "+user.get('last_name')
     session['login_id'] = user.get('id')
+
+def log_in_auth(email):
+    from sqlhelper import Table
+    auths = Table("auths", "first_name", "last_name", "email", "password","id")
+    auth = auths.getone("email", email)
+
+    session['logged_in'] = True
+    session['email'] =  email
+    session['name'] =  auth.get('first_name')+ " "+auth.get('last_name')
+    session['login_id'] = auth.get('id')
 
 @app.route("/wallet", methods = ['GET', 'POST'])
 def wallet_page():
@@ -83,14 +94,25 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         candidate = request.form['password']
-
         users = Table("users", "first_name", "last_name", "email", "password")
         user = users.getone("email", email)
         accpass= user.get('password')
 
         if accpass is None:
-            flash("email not found", 'danger')
-            return redirect(url_for('login'))
+            auths = Table("auths", "first_name", "last_name", "email", "password","id")
+            auth = auths.getone("email", email)
+            authpass = auth.get('password')
+            if authpass is None:
+                flash("email not found", 'danger')
+                return redirect(url_for('login'))
+            else:
+                if sha256_crypt.verify(candidate, authpass):
+                    log_in_auth(email)
+                    flash('You are now logged in', 'success')
+                    return redirect(url_for('homepage_auth'))
+                else: 
+                    flash('Invalid password', 'success')
+                    return redirect(url_for('login'))
         else: 
             if sha256_crypt.verify(candidate, accpass):
                 log_in_user(email)
@@ -104,7 +126,41 @@ def login():
 
 @app.route("/upload", methods = ['GET', 'POST'])
 def upload():
-    return render_template('SubmitPage.html')
+    import PyPDF2
+    from sqlhelper import Table, isnewdoc
+    doc = Table("docs","doc_name", "doc_hash", "doc_author","id")
+    login_id=session['login_id']
+    wallet = mongo_db.wallets.find_one({'login_id': login_id})
+    author = wallet["address"]
+    message =""
+    if request.method == 'POST':
+        # Check if the file key is present in the request
+        if 'file' not in request.files:
+            return 'No file uploaded.', 400
+
+        # Get the uploaded file from the request object
+        uploaded_file = request.files['file']
+
+        # Check if the file is empty
+        if uploaded_file.filename == '':
+            return 'No file selected.', 400
+
+        # Open the uploaded file using PyPDF2
+        pdf_reader = PyPDF2.PdfReader(uploaded_file)
+
+        # Extract the text from the PDF file
+        text = ''
+        for i in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[i]
+            text += page.extract_text()
+        hash = hashlib.sha256(text.encode()).hexdigest()
+        if isnewdoc(uploaded_file.filename, hash):
+            doc.insert(uploaded_file.filename, hash, author)
+        else:
+            message = "Your document already exist"
+            return render_template('SubmitPage.html',message=message)
+    # Render the extracted text on a new page
+    return render_template('SubmitPage.html',message=message)
 
 @app.route("/logout")
 def logout():
@@ -115,42 +171,70 @@ def logout():
 @app.route("/signup", methods = ['GET', 'POST'])
 def signup():
     from formhelper import RegisterForm
-    from sqlhelper import Table, isnewuser
+    from sqlhelper import Table, isnewuser, isnewauth
     form = RegisterForm(request.form)
     users = Table("users","first_name", "last_name", "email", "password","id")
-
+    auths = Table("auths", "first_name", "last_name", "email", "password","id")
+    message =""
     if request.method == 'POST' and form.validate():
         first_name = form.first_name.data
         last_name = form.last_name.data
+        auth_type = form.auth_type.data
+        print(auth_type)
         full_name = first_name + last_name
         priv_key = generate_private_key()
         pub_key = generate_public_key(priv_key)
         address = generate_address(pub_key)
         email = form.email.data
-        
-        if isnewuser(email):
-            password = sha256_crypt.hash(form.password.data)
-            users.insert(first_name, last_name, email, password)
-            login_id=users.getid("email",email)["id"]
-            print(login_id)
-            mongo_db.wallets.insert_one({
-                "login_id": login_id,
-                "private_key" : priv_key.to_string().hex(),
-                "public_key" : pub_key.hex(),
-                "address" : address.decode('ascii'),
-                "balance" : 0,
-                "transaction":get_transaction(address)
-            })
-            log_in_user(email)
-            return redirect(url_for('homepage'))
-        else:
-            return redirect(url_for('signup'))
-        
-    return render_template('signup.html', form=form)
+        if auth_type == "regular":
+            if isnewuser(email):
+                password = sha256_crypt.hash(form.password.data)
+                users.insert(first_name, last_name, email, password)
+                login_id=users.getone("email",email)["id"]
+                mongo_db.wallets.insert_one({
+                    "login_id": login_id,
+                    "private_key" : priv_key.to_string().hex(),
+                    "public_key" : pub_key.hex(),
+                    "address" : address.decode('ascii'),
+                    "balance" : 0,
+                    "transaction":get_transaction(address)
+                })
+                log_in_user(email)
+                return redirect(url_for('homepage'))
+            else:
+                message ="Account already exist"
+                return redirect(url_for('signup'))
+        elif auth_type =="auth":
+            if isnewuser(email):
+                if isnewauth(email):
+                    password = sha256_crypt.hash(form.password.data)
+                    auths.insert(first_name, last_name, email, password)
+                    login_id=auths.getone("email",email)["id"]
+                    mongo_db.wallets.insert_one({
+                        "login_id": login_id,
+                        "private_key" : priv_key.to_string().hex(),
+                        "public_key" : pub_key.hex(),
+                        "address" : address.decode('ascii'),
+                        "balance" : 0,
+                        "transaction":get_transaction(address)
+                    })
+                    log_in_auth(email)
+                    return redirect(url_for('homepage_auth'))
+                else:
+                    message ="Account already exist"
+                    return redirect(url_for('signup'))
+            else:
+                message ="Account already exist"
+                return redirect(url_for('signup'))
+    return render_template('signup.html', form=form, message=message)
 
 @app.route("/homepage")
 def homepage():
     return render_template('Homepage.html') 
+
+@app.route("/homepage_auth")
+def homepage_auth():
+    return render_template('Homepage_auth.html') 
 
 @app.route("/")
 def index():

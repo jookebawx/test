@@ -16,7 +16,7 @@ class Table():
                 if column == "id":
                     create_data += "%s INT AUTO_INCREMENT PRIMARY KEY," %column
                 else:
-                    create_data += "%s varchar(100)," %column
+                    create_data += "%s varchar(500)," %column
 
             cur = mysql.connection.cursor() #create the table
             cur.execute("CREATE TABLE %s(%s)" %(self.table, create_data[:len(create_data)-1]))
@@ -36,11 +36,6 @@ class Table():
         if result > 0: data = cur.fetchone()
         cur.close(); return data
     
-    def getid(self, search, value):
-        data = {}; cur = mysql.connection.cursor()
-        result = cur.execute("SELECT id FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
-        if result > 0: data = cur.fetchone()
-        cur.close(); return data
     
     #delete a value from the table based on column's data
     def deleteone(self, search, value):
@@ -92,6 +87,21 @@ def isnewuser(email):
     users = Table("users", "first_name", "last_name", "email", "password","id")
     data = users.getall()
     emails = [user.get('email') for user in data]
+
+    return False if email in emails else True
+
+def isnewdoc(doc_name, hash):
+    docs = Table("docs","doc_name", "doc_hash", "doc_author","id")
+    data = docs.getall()
+    docnames = [doc.get('doc_name') for doc in data]
+    hashes = [dochash.get('doc_hash') for dochash in data]
+
+    return False if doc_name in docnames or hash in hashes else True
+
+def isnewauth(email):
+    auths = Table("auths", "first_name", "last_name", "email", "password","id")
+    data = auths.getall()
+    emails = [auth.get('email') for auth in data]
 
     return False if email in emails else True
 # users = Table("users", "first_name", "last_name", "email", "password")

@@ -1,4 +1,4 @@
-import hashlib
+
 import ecdsa
 import binascii
 import time
@@ -12,7 +12,7 @@ from tx import Transaction
 
 INITIAL_BITS = 0x1e777777
 MAX_32BIT = 0xffffffff
-AUTH = [Wallet("Authority 1",1), Wallet("Authority 2",1), Wallet("Authority 3",1)]
+# AUTH = [Wallet("Authority 1",1), Wallet("Authority 2",1), Wallet("Authority 3",1)]
 
 
 class BlockEncoder(json.JSONEncoder):
@@ -41,7 +41,7 @@ class BlockDecoder(json.JSONDecoder):
         
 class Blockchain:
     def __init__(self):
-        self.authorities = AUTH
+        # self.authorities = AUTH
         self.blockchain = self.load_blocks()
         self.required_signatures = 2
     
@@ -74,36 +74,37 @@ class Blockchain:
         return valid
 
     def mining(self, block):
-        approvals = []
+        # approvals = []
+        # start_time = int(time.time() * 1000)
+        # for authority in self.authorities:
+        #     approve = input("Enter signature from {} (y/n): ".format(authority.name))
+        #     if approve == 'y':
+        #         approvals.append(authority)
+        #         s = authority.sign_transaction(block.tx)
+        #         block.signatures.append(s)
+        #         if not self.verify_signed_message(block.tx, s, authority.signature): 
+        #             print("ERROR: SIGNATURE UNVERIFIED")
+        # if len(approvals) >= self.required_signatures:
+        block.prev_hash = self.blockchain[-1].hash
         start_time = int(time.time() * 1000)
-        for authority in self.authorities:
-            approve = input("Enter signature from {} (y/n): ".format(authority.name))
-            if approve == 'y':
-                approvals.append(authority)
-                s = authority.sign_transaction(block.tx)
-                block.signatures.append(s)
-                if not self.verify_signed_message(block.tx, s, authority.signature): 
-                    print("ERROR: SIGNATURE UNVERIFIED")
-        if len(approvals) >= self.required_signatures:
-            block.prev_hash = self.blockchain[-1].hash
-            for n in range(MAX_32BIT + 1):
-                block.nonce = n
-                if block.check_valid_hash():
-                    new_bits = self.get_retarget_bits()
-                    if new_bits < 0 :
-                        if len(self.blockchain) < 2:
-                            block.bits = INITIAL_BITS
-                        else:
-                            block.bits = self.blockchain[-1].bits
+        for n in range(MAX_32BIT + 1):
+            block.nonce = n
+            if block.check_valid_hash():
+                new_bits = self.get_retarget_bits()
+                if new_bits < 0 :
+                    if len(self.blockchain) < 2:
+                        block.bits = INITIAL_BITS
                     else:
-                       block.bits = new_bits
-                    end_time = int(time.time()*1000)
-                    block.elapsed_time = str((end_time - start_time) / (1000.0)) + "秒"
-                    self.add_block(block)
-                    print("Block is added to the blockchain")
-                    return
-        else:
-            print("Block is not added: insufficient signatures")
+                        block.bits = self.blockchain[-1].bits
+                else:
+                    block.bits = new_bits
+                end_time = int(time.time()*1000)
+                block.elapsed_time = str((end_time - start_time) / (1000.0)) + "秒"
+                self.add_block(block)
+                print("Block is added to the blockchain")
+                return
+        # else:
+        #     print("Block is not added: insufficient signatures")
 
     def get_retarget_bits(self):
       if len(self.blockchain) == 0 or len(self.blockchain) % 5 != 0:
