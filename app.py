@@ -132,6 +132,9 @@ def upload():
     login_id=session['login_id']
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
     author = wallet["address"]
+    uploaded_docs=doc.getsome("doc_author",author)
+    uploaded_docname=[uploaded_doc["doc_name"] for uploaded_doc in uploaded_docs]
+    print(uploaded_docname)
     message =""
     if request.method == 'POST':
         # Check if the file key is present in the request
@@ -156,11 +159,14 @@ def upload():
         hash = hashlib.sha256(text.encode()).hexdigest()
         if isnewdoc(uploaded_file.filename, hash):
             doc.insert(uploaded_file.filename, hash, author)
+            uploaded_docs=doc.getsome("doc_author",author)
+            uploaded_docname=[uploaded_doc["doc_name"] for uploaded_doc in uploaded_docs]
+            return render_template('SubmitPage.html',message=message,uploaded_doc=uploaded_docname)
         else:
             message = "Your document already exist"
-            return render_template('SubmitPage.html',message=message)
+            return render_template('SubmitPage.html',message=message,uploaded_doc=uploaded_docname)
     # Render the extracted text on a new page
-    return render_template('SubmitPage.html',message=message)
+    return render_template('SubmitPage.html',message=message, uploaded_doc=uploaded_docname)
 
 @app.route("/logout")
 def logout():
@@ -203,7 +209,7 @@ def signup():
                 return redirect(url_for('homepage'))
             else:
                 message ="Account already exist"
-                return redirect(url_for('signup'))
+                render_template('signup.html', form=form, message=message)
         elif auth_type =="auth":
             if isnewuser(email):
                 if isnewauth(email):
@@ -222,10 +228,10 @@ def signup():
                     return redirect(url_for('homepage_auth'))
                 else:
                     message ="Account already exist"
-                    return redirect(url_for('signup'))
+                    render_template('signup.html', form=form, message=message)
             else:
                 message ="Account already exist"
-                return redirect(url_for('signup'))
+                render_template('signup.html', form=form, message=message)
     return render_template('signup.html', form=form, message=message)
 
 @app.route("/homepage")

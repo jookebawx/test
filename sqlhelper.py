@@ -30,12 +30,24 @@ class Table():
 
     #get one value from the table based on a column's data
     #EXAMPLE using blockchain: ...getone("hash","00003f73gh93...")
-    def getone(self, search, value):
+    def getthree(self, search, value):
         data = {}; cur = mysql.connection.cursor()
         result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
         if result > 0: data = cur.fetchone()
         cur.close(); return data
     
+    def getsome(self, search, value):
+        data = {}; cur = mysql.connection.cursor()
+        result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
+        if result > 0: data = cur.fetchall()
+        cur.close(); return data
+    
+    
+    def getone(self, search, value):
+        data = {}; cur = mysql.connection.cursor()
+        result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
+        if result > 0: data = cur.fetchone()
+        cur.close(); return data
     
     #delete a value from the table based on column's data
     def deleteone(self, search, value):
