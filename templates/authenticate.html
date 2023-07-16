@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+	<h1>Authenticate Document</h1>
+    <ul>
+        {% for link in links %}
+        <li>{{ link[0] }}</li>
+        <a href="{{link[1]}}">authenticate</a>
+        {% endfor %}
+    </ul>
+    
+	<form action="/authenticate" method="post" enctype="multipart/form-data">
+		<input type="submit" value="authenticate">
+	<h1>{{message}}</h1>
+	</form>
+	<a href ="/homepage_auth">back</a>
+</body>
+</html>
+ 

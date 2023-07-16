@@ -126,23 +126,26 @@
          width: 100%;
       }
     }
+    .notenough{ color: red }
     </style>
 <div>
+    
     <form method = "POST"  action="">
       <div class="container">
         <h1>Send to someone</h1>
         <h1>Current Balance = {{wallet.balance}} SC</h1>
-
+        
         <label for="address"><b>Receiver's Address</b></label>
         <input type="text" id="inputAddress" name="receiver" class="form-control" placeholder="address" required="required" autofocus="autofocus" value={{request.form.receiver}}>
         
         <label for="address"><b>Amount</b></label>
         <input type="text" id="inputAmount" name="amount" class="form-control" placeholder="amount" required="required" autofocus="autofocus" value={{request.form.amount}}>
 
-    
+        <p class="{{classname}}">{{message}}</p>
         <div class="clearfix">
           <button type="submit" class="signupbtn">Send</button>
         </div>
+
       </div>
     </form>
       
