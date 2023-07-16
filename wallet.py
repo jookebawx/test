@@ -5,6 +5,7 @@ import base58
 import json
 import os
 import datetime
+import base64
 
 from block import Block
 from tx import Transaction
@@ -53,10 +54,16 @@ def load_blocks():
 
 
 def generate_private_key():
-    return ecdsa.SigningKey.generate(curve = ecdsa.SECP256k1)
+    key = ecdsa.SigningKey.generate(curve = ecdsa.SECP256k1)
+    return key
+
+def str_to_signing_key(key):
+    encoded_bytes = base64.b64decode(key)
+    signing_key = ecdsa.SigningKey.from_der(encoded_bytes)
+    return signing_key
 
 def generate_public_key(priv_key):
-    return priv_key.get_verifying_key().to_string("compressed")
+    return priv_key.get_verifying_key()
 
 def generate_address(pub_key):
     pubkey_sha256 = hashlib.sha256(pub_key).digest()
@@ -76,12 +83,12 @@ def generate_address(pub_key):
 
 def get_transaction(address):
     bc = load_blocks()
-    tx =[b for b in bc if b.author == address or b.tx.get("receiver")== address]
-    return json.dumps(tx, indent=2,sort_keys=True, ensure_ascii = False, cls = BlockEncoder)
+    tx =[json.dumps(b, indent=2,sort_keys=True, ensure_ascii = False, cls = BlockEncoder) for b in bc if b.author == address or b.tx.get("receiver")== address]
+    return tx
 
 def update_balance(tx,address):
     bc = load_blocks()
-    tx =[b.tx for b in bc if b.author == address or b.tx.get("receiver")== address]
+    tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Crypto"]
     balance =0
     for t in tx:
         if t.get("receiver") == address:
@@ -90,6 +97,16 @@ def update_balance(tx,address):
             balance -= t.get("amount")
     return balance
 
+def update_docs(address):
+    bc = load_blocks()
+    tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
+    docs = [t.get("doc_name") for t in tx]
+    return docs
+
+def sign_transaction(priv_key,transaction):
+        message = str(transaction).encode()  # convert the transaction to a byte string
+        signature = binascii.hexlify(priv_key.sign(message)).decode()  # sign the message and convert the signature to a hex string
+        return signature
 class Wallet:
     def __init__(self, name, pr_type,):
         self.name = name

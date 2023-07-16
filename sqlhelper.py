@@ -1,6 +1,6 @@
 
 from app import mysql
-
+import re
 class Table():
     def __init__(self, table_name, *args):
         self.table = table_name
@@ -12,8 +12,10 @@ class Table():
         #if table does not already exist, create it.
         if isnewtable(table_name):
             create_data = ""
+            
             for column in self.columnsList:
-                if column == "id":
+                if "id" in column:
+                    print(column)
                     create_data += "%s INT AUTO_INCREMENT PRIMARY KEY," %column
                 else:
                     create_data += "%s varchar(500)," %column
@@ -29,12 +31,6 @@ class Table():
         data = cur.fetchall(); return data
 
     #get one value from the table based on a column's data
-    #EXAMPLE using blockchain: ...getone("hash","00003f73gh93...")
-    def getthree(self, search, value):
-        data = {}; cur = mysql.connection.cursor()
-        result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
-        if result > 0: data = cur.fetchone()
-        cur.close(); return data
     
     def getsome(self, search, value):
         data = {}; cur = mysql.connection.cursor()
@@ -42,6 +38,17 @@ class Table():
         if result > 0: data = cur.fetchall()
         cur.close(); return data
     
+    def getby2value(self, search1, value1, search2, value2):
+        data = {}; cur = mysql.connection.cursor()
+        result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\" and %s = \"%s\"" %(self.table, search1, value1, search2, value2))
+        if result > 0: data = cur.fetchone()
+        cur.close(); return data
+    
+    def get_rand(self, value):
+        data = {}; cur = mysql.connection.cursor()
+        result = cur.execute("SELECT * FROM %s ORDER BY RAND() LIMIT %s" %(self.table, value))
+        if result > 0: data = cur.fetchall()
+        cur.close(); return data
     
     def getone(self, search, value):
         data = {}; cur = mysql.connection.cursor()
@@ -70,12 +77,16 @@ class Table():
     def insert(self, *args):
         data = ""
         for arg in args:
-            data += "\'%s\'," %(arg)
-        
+            if arg == None:
+                data += "NULL,"
+            else:
+                data += "\'%s\'," %(arg)
         cur = mysql.connection.cursor()
         cur.execute("INSERT INTO %s %s VALUES (%s)" %(self.table, self.columnforinsert, data[:-1]))
         mysql.connection.commit()
         cur.close()
+
+
 
 
 
@@ -109,7 +120,7 @@ def isnewdoc(doc_name, hash):
     hashes = [dochash.get('doc_hash') for dochash in data]
 
     return False if doc_name in docnames or hash in hashes else True
-
+    
 def isnewauth(email):
     auths = Table("auths", "first_name", "last_name", "email", "password","id")
     data = auths.getall()
