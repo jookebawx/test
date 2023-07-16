@@ -333,7 +333,7 @@ def signup():
                     "private_key" : priv_key_string,
                     "public_key" : pub_key_string,
                     "address" : address.decode('ascii'),
-                    "balance" : 0,
+                    "balance" : 100,
                     "authenticated_docs":"",
                     "transaction":get_transaction(address)
                 })
@@ -353,7 +353,7 @@ def signup():
                         "private_key" : priv_key_string,
                         "public_key" : pub_key_string,
                         "address" : address.decode('ascii'),
-                        "balance" : 0,
+                        "balance" : 100,
                         "transaction":get_transaction(address)
                     })
                     log_in_auth(email)
