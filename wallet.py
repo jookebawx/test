@@ -102,6 +102,12 @@ def update_docs(address):
     tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
     docs = [t.get("doc_name") for t in tx]
     return docs
+    
+def get_doc_link(address):
+    bc = load_blocks()
+    tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
+    links = [(t.get("doc_name"),"https://gateway.pinata.cloud/ipfs/%s"%(t.get("ipfs_hash"))) for t in tx]
+    return links
 
 def sign_transaction(priv_key,transaction):
         message = str(transaction).encode()  # convert the transaction to a byte string

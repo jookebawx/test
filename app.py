@@ -1,9 +1,8 @@
-from flask import Flask, render_template, flash, redirect, url_for, session, request, logging
+from flask import Flask, render_template, flash, redirect, url_for, session, request, logging, send_file
 from passlib.hash import sha256_crypt
 from flask_mysqldb import MySQL
 from flask_pymongo import PyMongo
 import hashlib
-import ipfs_api, ipfshttpclient2
 import base64
 import requests
 
@@ -11,8 +10,9 @@ from wallet import *
 from bc import Blockchain
 from tx import Transaction
 
+JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJiYjM1ZDA1OS00YzFmLTQ5MDAtYTRiZS01YjllNzU2YWQ0OTYiLCJlbWFpbCI6InNhbW15LnNhbjIwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTlmY2Y0OTFmMmJkZjM2YjY3MmUiLCJzY29wZWRLZXlTZWNyZXQiOiIyZTc0YmQ4Mzc2NDlkODBmZDk5YjA1OGFjYjdlOWJiMDI1ZTBjY2FlNDJiYzY4OGFlZjBlZmRiYTAyMjg0OTYyIiwiaWF0IjoxNjg5NTA3ODA2fQ.x1EfjzA_i5zNv4kj4sXii0vSMuvjOwNyVG-hv0TyM24"
 chain = Blockchain()
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
@@ -82,11 +82,15 @@ def wallet_page():
     if acc_type == "User":
         wallet = mongo_db.wallets.find_one({'login_id': login_id})
         wallet = update_wallet_info(wallet,login_id)
+        links = get_doc_link(wallet["address"])
+        homelink = "/homepage"
     else:
         wallet =mongo_db.auth_wallets.find_one({'login_id': login_id})
         wallet = update_auth_wallet_info(wallet,login_id)
+        links = ""
+        homelink = "/homepage_auth"
     name = session['name']
-    return render_template('wallet.html', wallet=wallet, name=name)
+    return render_template('wallet.html', wallet=wallet, name=name, links=links, homelink=homelink)
 
 @app.route("/send", methods = ['GET', 'POST'])
 def send():
@@ -124,7 +128,7 @@ def login():
         users = Table("users","first_name", "last_name", "email", "password","user_id")
         user = users.getone("email", email)
         accpass= user.get('password')
-
+        
         if accpass is None:
             auths = Table("auths", "first_name", "last_name", "email", "password","auth_id")
             auth = auths.getone("email", email)
@@ -158,6 +162,8 @@ def upload():
     doc = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
     authenticators = Table("auths", "first_name", "last_name", "email", "password","auth_id")
     login_id=session['login_id']
+    name = session['name']
+    email = session['email']
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
     author = wallet["address"]
     author_priv_key = str_to_signing_key(wallet["private_key"])
@@ -175,8 +181,8 @@ def upload():
         # Check if the file is empty
         if uploaded_file.filename == '':
             return 'No file selected.', 400
-        
-        uploaded_file.save('D:/UNIV LYFE/blockchain/uploaded-file/' + uploaded_file.filename)
+        file_path = 'static/uploaded-file/' + uploaded_file.filename
+        uploaded_file.save(file_path)
         # Open the uploaded file using PyPDF2
         pdf_reader = PyPDF2.PdfReader(uploaded_file)
 
@@ -210,12 +216,12 @@ def upload():
             signature = None
             for id in rand_auth_ids:
                 auth_session.insert(doc_id, id, signature)
-            return render_template('SubmitPage.html',message=message,uploaded_doc=uploaded_docname)
+            return render_template('SubmitPage.html',message=message,uploaded_doc=uploaded_docname, name=name, email=email)
         else:
             message = "Your document already exist"
-            return render_template('SubmitPage.html',message=message,uploaded_doc=uploaded_docname)
+            return render_template('SubmitPage.html',message=message,uploaded_doc=uploaded_docname, name=name, email=email)
     # Render the extracted text on a new page
-    return render_template('SubmitPage.html',message=message, uploaded_doc=uploaded_docname)
+    return render_template('SubmitPage.html',message=message, uploaded_doc=uploaded_docname, name=name, email=email)
 
 @app.route("/authenticate")
 def authenticate():
@@ -223,6 +229,8 @@ def authenticate():
     doc_table = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
     auth_session_table = Table("auth_session","doc_id","authenticator_id","signature", "auth_session_id")
     login_id = session['login_id']
+    name = session['name']
+    email = session['email']
     doc_id_to_auth = [doc_id['doc_id'] for doc_id in auth_session_table.getsome("authenticator_id", login_id)]
     doc_name_to_auth = []
     for id in doc_id_to_auth:
@@ -232,8 +240,12 @@ def authenticate():
                     "doc_id": doc_id,
                     "doc_name": doc_name
                     } for doc_id, doc_name in zip(doc_id_to_auth, doc_name_to_auth)]
-    links = [(item["doc_name"],  f'/authenticate/{item["doc_id"]}')for item in doc_to_auth]
-    return render_template("authenticate.html", docname=doc_name_to_auth, links=links)
+    links = [(item["doc_name"],  f'/authenticate/{item["doc_id"]}',f'/authenticate/{item["doc_name"]}')for item in doc_to_auth]
+    return render_template("authenticate.html", docname=doc_name_to_auth, links=links, name=name, email=email)
+@app.route("/authenticate/<string:docname>")
+def view(docname):
+     pdf_path = 'static/uploaded-file/' + docname
+     return send_file(pdf_path, mimetype='application/pdf')
 
 @app.route("/authenticate/<int:id>")
 def sign(id):
@@ -241,6 +253,7 @@ def sign(id):
     doc_table = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
     auth_session_table = Table("auth_session","doc_id","authenticator_id","signature","auth_session_id")
     login_id = session['login_id']
+
     hash = doc_table.getone("doc_id",id)["doc_hash"]
     wallet = mongo_db.auth_wallets.find_one({'login_id': login_id})
     priv_key = str_to_signing_key(wallet["private_key"])
@@ -252,7 +265,7 @@ def sign(id):
     sql_raw(sql_command)
     auth_signs = [auth_sign["signature"] for auth_sign in auth_session_table.getsome("doc_id",id)]
     if len([value for value in auth_signs if value is not None]) == 3:
-        file_path = os.path.join('D:/UNIV LYFE/blockchain/uploaded-file/', doc_name)
+        file_path ='static/uploaded-file/' + doc_name
         tx=""
         block = Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", author_address)
         block.signatures = auth_signs
@@ -273,7 +286,7 @@ def sign(id):
         ('file',(doc_name,file,'application/octet-stream'))
         ]
         headers = {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJiYjM1ZDA1OS00YzFmLTQ5MDAtYTRiZS01YjllNzU2YWQ0OTYiLCJlbWFpbCI6InNhbW15LnNhbjIwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTlmY2Y0OTFmMmJkZjM2YjY3MmUiLCJzY29wZWRLZXlTZWNyZXQiOiIyZTc0YmQ4Mzc2NDlkODBmZDk5YjA1OGFjYjdlOWJiMDI1ZTBjY2FlNDJiYzY4OGFlZjBlZmRiYTAyMjg0OTYyIiwiaWF0IjoxNjg5NTA3ODA2fQ.x1EfjzA_i5zNv4kj4sXii0vSMuvjOwNyVG-hv0TyM24'
+            'Authorization': 'Bearer %s'%(JWT)
         }
         response = requests.request("POST", url, headers=headers, data=payload, files=files)
         response_text= json.loads(response.text)
@@ -368,11 +381,15 @@ def signup():
 
 @app.route("/homepage")
 def homepage():
-    return render_template('Homepage.html') 
+    name = session['name']
+    email = session['email']
+    return render_template('Homepage.html', name = name, email = email) 
 
 @app.route("/homepage_auth")
 def homepage_auth():
-    return render_template('Homepage_auth.html') 
+    name = session['name']
+    email = session['email']
+    return render_template('Homepage_auth.html',name = name, email=email) 
 
 @app.route("/")
 def index():

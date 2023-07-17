@@ -15,7 +15,8 @@ w = Wallet("Samuel", 0)
 w.getwalletinfo()
 # tx1 = Transaction("account", w.address, 0, "Created an account").to_json()
 tx = {
-    "receiver": "ACfxQJYXPfBmWFktsrdAYVAy581oE76eN",
+    "type": "Crypto",
+    "receiver": "7QwFKwC4SuU7cqLk1QnE92UZWg9EwMhKS",
     "amount": 1
 }
 tx1 = {
