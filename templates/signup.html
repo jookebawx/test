@@ -1,176 +1,144 @@
 <!DOCTYPE html>
-<html>
-<style>
-    body {font-family: Arial, Helvetica, sans-serif;}
-    * {box-sizing: border-box;}
-    
-    /* Full-width input fields */
-    input[type=text], input[type=password] {
-      width: 100%;
-      padding: 15px;
-      margin: 5px 0 22px 0;
-      display: inline-block;
-      border: none;
-      background: #f1f1f1;
-    }
-    
-    /* Add a background color when the inputs get focus */
-    input[type=text]:focus, input[type=password]:focus {
-      background-color: #ddd;
-      outline: none;
-    }
-    
-    /* Set a style for all buttons */
-    button {
-      background-color: #04AA6D;
-      color: white;
-      padding: 14px 20px;
-      margin: 8px 0;
-      border: none;
-      cursor: pointer;
-      width: 100%;
-      opacity: 0.9;
-    }
-    
-    button:hover {
-      opacity:1;
-    }
-    
-    /* Extra styles for the cancel button */
-    .cancelbtn {
-      width: auto;
-      padding: 14px 20px;
-      background-color: #f44336;
-    }
-    
-    /* Add padding to container elements */
-    .container {
-      padding: 16px;
-    }
-    
-    /* Center the image and position the close button */
-    .imgcontainer {
-        text-align: center;
-        margin: 24px 0 12px 0;
-        position: relative;
-    }
-    
-    img.avatar {
-        width: 40%;
-        border-radius: 50%;;
-    }
-    
-    span.psw {
-        float: right;
-        padding-top: 16px;
-    }
-    
-    /* The Modal (background) */
-    .modal {
-      display: none; /* Hidden by default */
-      position: fixed; /* Stay in place */
-      z-index: 1; /* Sit on top */
-      left: 0;
-      top: 0;
-      width: 100%; /* Full width */
-      height: 100%; /* Full height */
-      overflow: auto; /* Enable scroll if needed */
-      background-color: #474e5d;
-      padding-top: 50px;
-    }
-    
-    /* Modal Content/Box */
-    .modal-content {
-      background-color: #fefefe;
-      margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
-      border: 1px solid #888;
-      width: 80%; /* Could be more or less, depending on screen size */
-    }
-    
-    /* Style the horizontal ruler */
-    hr {
-      border: 1px solid #f1f1f1;
-      margin-bottom: 25px;
-    }
-     
-    /* The Close Button (x) */
-    .close {
-      position: absolute;
-      right: 35px;
-      top: 15px;
-      font-size: 40px;
-      font-weight: bold;
-      color: #f1f1f1;
-    }
-    
-    .close:hover,
-    .close:focus {
-      color: #f44336;
-      cursor: pointer;
-    }
-    
-    /* Clear floats */
-    .clearfix::after {
-      content: "";
-      clear: both;
-      display: table;
-    }
-    
-    /* Change styles for cancel button and signup button on extra small screens */
-    @media screen and (max-width: 300px) {
-        span.psw{
-            display: block;
-            float: none;
-        }
-      .cancelbtn, .signupbtn {
-         width: 100%;
-      }
-    }
-    </style>
-<div>
-    <form method = "POST"  action="">
-      <div class="container">
-        <h1>Sign Up</h1>
-        <p>Create an account.</p>
-        
-        <hr>
-        <label for="fname"><b>First Name</b></label>
-        <input type="text" id="inputFirstName" name="first_name" class="form-control" placeholder="First Name" required="required" autofocus="autofocus" value={{request.form.first_name}}>
+<!--ADAPTED FROM TEMPLATE at https://getbootstrap.com/docs/4.0/components/card/-->
 
-        <label for="lname"><b>Last Name</b></label>
-        <input type="text" id="inputLastName" name="last_name" class="form-control" placeholder="Last Name" required="required" autofocus="autofocus" value={{request.form.last_name}}>
-        
-        
-        <label for="email"><b>Email</b></label>
-        <input type="text" id="inputEmail" name="email" class="form-control" placeholder="Email" required="required" autofocus="autofocus" value={{request.form.email}}>
-        
-        <label for="authentication type select"><b>Select account type<br></b></label>
-        <select id="authentication type select" name="auth_type">
-          <option value="">--Please choose an option--</option>
-          <option value="auth">Authenticator</option>
-          <option value="regular">Regular User</option>
-        </select>
-        <br>
-        <label for="psw"><b><br>Password</b></label>
-        <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="required" autofocus="autofocus" value={{request.form.password}}>
-       
-        
-        <label for="psw-repeat"><b>Repeat Password</b></label>
-        <input type="password" id="confirmPassword" name="confirm" class="form-control" placeholder="Confirm Password" required="required" autofocus="autofocus" value={{request.form.confirm}}>
-        
-        
-        <label>
-          <input type="checkbox" checked="checked" name="remember" style="margin-bottom:15px"> Remember me
-        </label>
-    
-        <p>By creating an account you agree to our <a href="#" style="color:dodgerblue">Terms & Privacy</a>.</p>
-    
-        <div class="clearfix">
-          <button type="submit" class="signupbtn">Sign Up</button>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Shockwave - Register</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename = 'images/favicon.ico') }}">
+
+    <link href="{{url_for('static',filename='vendor/bootstrap/css/bootstrap.min.css')}}" rel="stylesheet">
+    <link href="{{url_for('static',filename='vendor/fontawesome-free/css/all.min.css')}}" rel="stylesheet" type="text/css">
+    <link href="{{url_for('static',filename='css/sb-admin.css')}}" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .container h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header-image {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .header-image img {
+            max-width: 300px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .form-label-group input {
+            padding: 10px;
+        }
+
+        .form-label-group label {
+            margin-bottom: 0;
+            font-weight: bold;
+        }
+
+        .button-container {
+            text-align: center;
+        }
+
+        .button-container a {
+            display: inline-block;
+            background-color: #04AA6D;
+            color: white;
+            padding: 14px 20px;
+            margin-right: 10px;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .button-container a:hover {
+            background-color: #05B882;
+        }
+
+        button {
+            background-color: #04AA6D;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <form method = "POST"  action="">
+    <div class="container">
+        <div class="header-image">
+            <img src="{{ url_for('static', filename='images/signup.jpg') }}" alt="Header Image">
         </div>
-      </div>
-    </form>
-    <p>{{message}}</p>
-   <button type="button" onclick="history.back()" class="cancelbtn">Cancel</form></button>
-</div>
+        <h1>Register an Account</h1>
+        <div class="form-label-group">
+            <input type="text" id="inputFirstName" name="first_name" class="form-control" placeholder="First Name" required="required" autofocus="autofocus" value={{request.form.first_name}}>
+            <label for="fname"><b>First Name</b></label>
+        </div>
+        <br>
+        <div class="form-label-group">
+            <input type="text" id="inputLastName" name="last_name" class="form-control" placeholder="Last Name" required="required" autofocus="autofocus" value={{request.form.last_name}}>
+            <label for="lname"><b>Last Name</b></label>
+        </div>
+        <br>
+        <div class="form-label-group">
+            <input type="text" id="inputEmail" name="email" class="form-control" placeholder="Email" required="required" autofocus="autofocus" value={{request.form.email}}>
+            <label for="email"><b>Email</b></label>
+        </div>
+        <br>
+        <div class="form-label-group">
+            <label for="authentication type select"><b>Select account type<br></b></label>
+            <select id="authentication type select" name="auth_type">
+              <option value="">--Please choose an option--</option>
+              <option value="auth">Authenticator</option>
+              <option value="regular">Regular User</option>
+            </select>
+        </div>
+        <br>
+        <div class="form-label-group">
+            <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="required" autofocus="autofocus" value={{request.form.password}}>
+            <label for="psw"><b>Password</b></label>
+        </div>
+        <br>
+        <div class="form-label-group">
+            <input type="password" id="confirmPassword" name="confirm" class="form-control" placeholder="Confirm Password" required="required" autofocus="autofocus" value={{request.form.confirm}}>
+            <label for="psw-repeat"><b>Repeat Password</b></label>
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
+        </div>
+        <br>
+        </form>
+        <div class="button-container">
+            <a href="login">Already have an account? Login now.</a>
+        </div>
+    </div>
+
+    <script src="{{url_for('static',filename='vendor/jquery/jquery.min.js')}}"></script>
+    <script src="{{url_for('static',filename='vendor/bootstrap/js/bootstrap.bundle.min.js')}}"></script>
+    <script src="{{url_for('static',filename='vendor/jquery-easing/jquery.easing.min.js')}}"></script>
+</body>
+
 </html>

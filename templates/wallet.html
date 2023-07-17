@@ -5,8 +5,15 @@
         <p>public key: {{ wallet.public_key }}</p>
         <p>address: {{ wallet.address}}</p>
         <p>balance: {{ wallet.balance}}</p>
-        <p>doc NFT: {{ wallet.authenticated_docs}}</p>
+        <p>doc NFT:</p>
+        <ul>
+            {% for link in links %}
+            <li><a href = "{{link[1]}}">{{ link[0] }}</a></li>
+            {% endfor %}
+        </ul>
+        
         <p>transaction: {{ wallet.transaction}}</p>
+        <button type="button" onclick="window.location.href='{{homelink}}'" class="cancelbtn">Back</button>
     </body>
     
 

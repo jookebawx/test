@@ -3,8 +3,7 @@
 
 <html lang="en">
 
-  <head>
-
+<head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -18,74 +17,115 @@
     <link href="{{url_for('static',filename='vendor/fontawesome-free/css/all.min.css')}}" rel="stylesheet" type="text/css">
     <link href="{{url_for('static',filename='css/sb-admin.css')}}" rel="stylesheet">
 
-  </head>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f5f5;
+        }
 
-  <body class="bg-dark">
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
 
+        .container h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header-image {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .header-image img {
+            max-width: 300px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .form-label-group input {
+            padding: 10px;
+        }
+
+        .form-label-group label {
+            margin-bottom: 0;
+            font-weight: bold;
+        }
+
+        .button-container {
+            text-align: center;
+        }
+
+        .button-container a {
+            display: inline-block;
+            background-color: #04AA6D;
+            color: white;
+            padding: 14px 20px;
+            margin-right: 10px;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .button-container a:hover {
+            background-color: #05B882;
+        }
+
+        button {
+            background-color: #04AA6D;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
     <div class="container">
-      <div class="card card-register mx-auto mt-5">
-        <div class="card-header">Register an Account</div>
-        <div class="card-body">
-
-          {% include 'includes/_messages.html' %}
-          {% from "includes/_formhelpers.html" import render_field %}
-          <form method="POST" action="">
-            <div class="form-group">
-              <div class="form-row">
-                <div class="col-md-6">
-                  <div class="form-label-group">
-                    <input type="text" id="inputUsername" name="name" class="form-control" placeholder="Full Name" required="required" autofocus="autofocus" value={{request.form.name}}>
-                    <label for="fullName">Full Name</label>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-label-group">
-                    <input type="text" id="inputUsername" name="username" class="form-control" placeholder="Username" required="required" autofocus="autofocus" value={{request.form.username}}>
-                    <label for="inputUsername">Username</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <div class="form-label-group">
-                <input type="text" id="inputEmail" name="email" class="form-control" placeholder="Email" required="required" autofocus="autofocus" value={{request.form.email}}>
-                <label for="inputEmail">Email address</label>
-              </div>
-            </div>
-            <div class="form-group">
-              <div class="form-row">
-                <div class="col-md-6">
-                  <div class="form-label-group">
-                    <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="required" autofocus="autofocus" value={{request.form.password}}>
-                    <label for="inputPassword">Password</label>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-label-group">
-                    <input type="password" id="confirmPassword" name="confirm" class="form-control" placeholder="Confirm Password" required="required" autofocus="autofocus" value={{request.form.confirm}}>
-                    <label for="confirmPassword">Confirm Password</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Register</button>
-          </form>
-
-
-
-          <div class="text-center">
-            <a class="d-block small mt-3" href="login">Already have an account? Login now.</a>
-            <a class="d-block small mt-3" href="/">Home Page</a>
-          </div>
+        <div class="header-image">
+            <img src="{{ url_for('static', filename='images/signup.jpg') }}" alt="Header Image">
         </div>
-      </div>
-    </div>
+        <h1>Register an Account</h1>
+        <div class="form-label-group">
+            <form method="POST" action="">
+                <input type="text" id="inputFirstName" name="first_name" class="form-control" placeholder="First Name" required="required" autofocus="autofocus" value={{request.form.first_name}}>
+                <label for="inputFullName">First Name</label>
+        </div>
+        <div class="form-label-group">
+            <input type="text" id="inputLastName" name="last_name" class="form-control" placeholder="Last Name" required="required" autofocus="autofocus" value={{request.form.last_name}}>
+            <label for="inputUsername">Last Name</label>
+        </div>
+        <div class="form-label-group">
+            <input type="text" id="inputEmail" name="email" class="form-control" placeholder="Email" required="required" autofocus="autofocus" value={{request.form.email}}>
+            <label for="inputEmail">Email address</label>
+        </div>
+        <div class="form-label-group">
+            <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="required" autofocus="autofocus" value={{request.form.password}}>
+            <label for="inputPassword">Password</label>
+        </div>
+        <div class="form-label-group">
+            <input type="password" id="inputConfirmPassword" name="confirm" class="form-control" placeholder="Confirm Password" required="required" autofocus="autofocus" value={{request.form.confirm}}>
+            <label for="inputConfirmPassword">Confirm Password</label>
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
+        </div>
+        </form>
 
+        <div class="button-container">
+            <a href="login">Already have an account? Login now.</a>
+        </div>
+    </div>
 
     <script src="{{url_for('static',filename='vendor/jquery/jquery.min.js')}}"></script>
     <script src="{{url_for('static',filename='vendor/bootstrap/js/bootstrap.bundle.min.js')}}"></script>
     <script src="{{url_for('static',filename='vendor/jquery-easing/jquery.easing.min.js')}}"></script>
-
-  </body>
+</body>
 
 </html>

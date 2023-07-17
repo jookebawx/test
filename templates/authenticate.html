@@ -1,21 +1,182 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+  <title>Authenticate Document</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <style>
+    body {
+      font-family: Georgia, serif;
+      margin: 0;
+    }
+
+    .sidebar {
+      height: 100%;
+      width: 250px;
+      position: fixed;
+      z-index: 1;
+      top: 0;
+      left: 0;
+      background-color: #333;
+      overflow-x: hidden;
+      padding-top: 20px;
+    }
+
+    .sidebar a {
+      padding: 10px;
+      text-decoration: none;
+      font-size: 18px;
+      color: #f1f1f1;
+      display: block;
+      transition: background-color 0.3s ease;
+    }
+
+    .sidebar a:hover {
+      background-color: #555;
+    }
+
+    .sidebar h3 {
+      color: #f1f1f1;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+
+    .profile-section {
+      background-color: #f7f7f7;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .profile-section h2 {
+      font-size: 24px;
+      margin: 0;
+      margin-bottom: 10px;
+    }
+
+    .profile-name {
+      font-size: 18px;
+      margin-top: 5px;
+    }
+
+    .profile-picture {
+      display: block;
+      width: 150px;
+      height: 150px;
+      margin: 0 auto;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center;
+      margin-bottom: 10px;
+    }
+
+    .content {
+      margin-left: 250px;
+      padding: 20px;
+    }
+
+    .header {
+      background-color: #f9ca24;
+      padding: 20px;
+      text-align: center;
+    }
+
+    form {
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+    }
+
+    input[type="file"] {
+      margin-bottom: 10px;
+    }
+
+    input[type="submit"] {
+      background-color: #4CAF50;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    input[type="submit"]:hover {
+      background-color: #45a049;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+  
+    li {
+        margin-bottom: 10px;
+    }
+  
+    a {
+        color: #007bff;
+        text-decoration: none;
+    }
+  
+    a:hover {
+        text-decoration: underline;
+    }
+  
+    form {
+        margin-bottom: 20px;
+    }
+
+    .message {
+        margin-bottom: 20px;
+    }
+  
+    .back-link {
+        display: block;
+    }
+
+
+  </style>
 </head>
+
 <body>
-	<h1>Authenticate Document</h1>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="profile-section">
+      <img class="profile-picture" src="{{ url_for('static', filename='images/profpic1.jpg') }}" alt="Profile Picture">
+      <h2>Welcome, {{name}}</h2>
+      <p class="profile-name">{{email}}</p>
+    </div>
+    <h3>Menu</h3>
+    <a href="/homepage">Home</a>
+    <a href="/wallet">Wallet</a>
+    <a href="/send">Send</a>
+    <a href="/authenticate">Authenticate Document</a>
+    <a href="#">Account Settings</a>
+    <a href="/logout">Logout</a>
+  </div>
+
+  </div>
+
+  <!-- Page Content -->
+  <div class="content">
+    <div class="header">
+      <h1>Authenticate</h1>
+    </div>
     <ul>
         {% for link in links %}
-        <li>{{ link[0] }}</li>
-        <a href="{{link[1]}}">authenticate</a>
+        <li>{{ link[0] }} <a href="{{link[1]}}">authenticate</a>&nbsp;<a href="{{link[2]}}">view</a></li>
         {% endfor %}
     </ul>
-    
-	<form action="/authenticate" method="post" enctype="multipart/form-data">
-		<input type="submit" value="authenticate">
-	<h1>{{message}}</h1>
-	</form>
-	<a href ="/homepage_auth">back</a>
+  
+    <h1 class="message">{{message}}</h1>
+  
+
+  </div>
 </body>
+
 </html>
- 
