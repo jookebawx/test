@@ -2,13 +2,13 @@ from flask import Flask, render_template, flash, redirect, url_for, session, req
 from passlib.hash import sha256_crypt
 from flask_mysqldb import MySQL
 from flask_pymongo import PyMongo
+
 import hashlib
 import base64
 import requests
 
 from wallet import *
 from bc import Blockchain
-from tx import Transaction
 
 JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJiYjM1ZDA1OS00YzFmLTQ5MDAtYTRiZS01YjllNzU2YWQ0OTYiLCJlbWFpbCI6InNhbW15LnNhbjIwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTlmY2Y0OTFmMmJkZjM2YjY3MmUiLCJzY29wZWRLZXlTZWNyZXQiOiIyZTc0YmQ4Mzc2NDlkODBmZDk5YjA1OGFjYjdlOWJiMDI1ZTBjY2FlNDJiYzY4OGFlZjBlZmRiYTAyMjg0OTYyIiwiaWF0IjoxNjg5NTA3ODA2fQ.x1EfjzA_i5zNv4kj4sXii0vSMuvjOwNyVG-hv0TyM24"
 chain = Blockchain()
@@ -54,7 +54,7 @@ def update_wallet_info(wallet,login_id):
     update_tx_cmd = {"$set": {"transaction": updated_tx}}
     mongo_db.wallets.update_one(wallet, update_tx_cmd)
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
-    updated_balance = update_balance(updated_tx, wallet["address"])
+    updated_balance = update_balance(wallet["address"])
     update_balance_cmd = {"$set": {"balance": updated_balance}}
     mongo_db.wallets.update_one(wallet, update_balance_cmd)
     wallet = mongo_db.wallets.find_one({'login_id': login_id})
@@ -69,7 +69,7 @@ def update_auth_wallet_info(wallet,login_id):
     update_tx_cmd = {"$set": {"transaction": updated_tx}}
     mongo_db.auth_wallets.update_one(wallet, update_tx_cmd)
     wallet = mongo_db.auth_wallets.find_one({'login_id': login_id})
-    updated_balance = update_balance(updated_tx, wallet["address"])
+    updated_balance = update_balance(wallet["address"])
     update_balance_cmd = {"$set": {"balance": updated_balance}}
     mongo_db.auth_wallets.update_one(wallet, update_balance_cmd)
     wallet = mongo_db.auth_wallets.find_one({'login_id': login_id})
@@ -97,8 +97,16 @@ def send():
     from formhelper import SendMoneyForm
 
     form = SendMoneyForm(request.form)
+    acc_type = session['account_type']
     login_id=session['login_id']
-    wallet = mongo_db.wallets.find_one({'login_id': login_id})
+    if acc_type == "User":
+        wallet = mongo_db.wallets.find_one({'login_id': login_id})
+        wallet = update_wallet_info(wallet,login_id)
+        homelink = "/homepage"
+    else:
+        wallet =mongo_db.auth_wallets.find_one({'login_id': login_id})
+        wallet = update_auth_wallet_info(wallet,login_id)
+        homelink = "/homepage_auth"
     message = ""
     classname=""
     if request.method == 'POST' and form.validate():
@@ -107,17 +115,24 @@ def send():
         if int(amount) > wallet["balance"]:
             message = "The inputted amount exceed your balance"
             classname = "notenough"
-            return render_template('send.html', wallet=wallet, form=form, classname = classname, message=message)
+            return render_template('send.html', wallet=wallet, form=form, classname = classname, message=message,homelink=homelink)
         else:
             tx ={
                 "type" : "Crypto",
                 "receiver": receiver_address,
                 "amount": int(amount)
             }
-            chain.mining(Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", wallet["address"]))
-            wallet = update_wallet_info(wallet,login_id)
+            block = Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", wallet["address"])
+            priv_key = str_to_signing_key(wallet["private_key"])
+            block.signatures = sign_transaction(priv_key,tx)
+            chain.mining(block)
+            if acc_type == "User":
+                wallet = update_wallet_info(wallet,login_id)
+            else:
+                wallet = update_auth_wallet_info(wallet,login_id)
+            
 
-    return render_template('send.html', wallet=wallet, form=form, message=message)
+    return render_template('send.html', wallet=wallet, form=form, message=message, homelink=homelink)
 
 @app.route("/login", methods = ['GET', 'POST'])
 def login():
@@ -192,7 +207,12 @@ def upload():
             page = pdf_reader.pages[i]
             text += page.extract_text()
         hash = hashlib.sha256(text.encode()).hexdigest()
-        author_sign = sign_transaction(author_priv_key, hash)
+        pre_tx={
+            "type": "Docs",
+            "doc_name": uploaded_file.filename,
+            "doc_hash": hash,
+        }
+        author_sign = sign_transaction(author_priv_key, pre_tx)
         if isnewdoc(uploaded_file.filename, hash):
             doc.insert(uploaded_file.filename, hash, author, author_sign)
             doc_id = doc.getone("doc_name", uploaded_file.filename)["doc_id"]
@@ -240,8 +260,9 @@ def authenticate():
                     "doc_id": doc_id,
                     "doc_name": doc_name
                     } for doc_id, doc_name in zip(doc_id_to_auth, doc_name_to_auth)]
-    links = [(item["doc_name"],  f'/authenticate/{item["doc_id"]}',f'/authenticate/{item["doc_name"]}')for item in doc_to_auth]
+    links = [(item["doc_name"],  f'/authenticate/{item["doc_id"]}',f'/authenticate/{item["doc_name"]}',f'/authenticate/reject+{item["doc_id"]}')for item in doc_to_auth]
     return render_template("authenticate.html", docname=doc_name_to_auth, links=links, name=name, email=email)
+
 @app.route("/authenticate/<string:docname>")
 def view(docname):
      pdf_path = 'static/uploaded-file/' + docname
@@ -258,8 +279,13 @@ def sign(id):
     wallet = mongo_db.auth_wallets.find_one({'login_id': login_id})
     priv_key = str_to_signing_key(wallet["private_key"])
     author_address = doc_table.getone("doc_id",id)["doc_author"]
-    authenticator_sign = sign_transaction(priv_key, hash)
     doc_name = doc_table.getone("doc_id", id)["doc_name"]
+    pre_tx={
+            "type": "Docs",
+            "doc_name": doc_name,
+            "doc_hash": hash,
+        }
+    authenticator_sign = sign_transaction(priv_key, pre_tx)
     auth_session_id = auth_session_table.getby2value("authenticator_id", login_id, "doc_id", id)["auth_session_id"]
     sql_command = "UPDATE auth_session SET signature = \"%s\" WHERE auth_session_id =%s" %(authenticator_sign,auth_session_id)
     sql_raw(sql_command)
@@ -274,7 +300,7 @@ def sign(id):
                          \"keyvalues\":{\
                                 \"doc_author\":\"%s\", \
                                 \"doc_hash\":\"%s\", \
-                                \"authenticators\":\"%s\", \
+                                \"signatures\":\"%s\", \
                                 \"authenticated_date\":\"%s\"} }"%(doc_name,author_address,hash,block.signatures,str(datetime.datetime.now()))
         print(doc_metadata)
         url = "https://api.pinata.cloud/pinning/pinFileToIPFS"
@@ -310,11 +336,27 @@ def sign(id):
             os.remove(file_path)
     return redirect(url_for('authenticate'))
 
+@app.route("/authenticate/reject+<int:id>")
+def reject(id):
+    from sqlhelper import Table,sql_raw
+    doc_table = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
+    auth_session_table = Table("auth_session","doc_id","authenticator_id","signature","auth_session_id")
+    login_id = session['login_id']
+    auth_session_ids = [auth_sess_id["auth_session_id"] for auth_sess_id in auth_session_table.getsome("doc_id",id)]
+    doc_name = doc_table.getone("doc_id", id)["doc_name"]
+    file_path ='static/uploaded-file/' + doc_name
+    for auth_sess_id in auth_session_ids:
+            auth_session_table.deleteone("auth_session_id",auth_sess_id)
+    doc_table.deleteone("doc_id",id)
+    if os.path.exists(file_path):
+            os.remove(file_path)
+    return redirect(url_for('authenticate'))
+
 @app.route("/logout")
 def logout():
     session.clear()
     flash("Logout success", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('index'))       
 
 @app.route("/signup", methods = ['GET', 'POST'])
 def signup():
@@ -347,7 +389,7 @@ def signup():
                     "public_key" : pub_key_string,
                     "address" : address.decode('ascii'),
                     "balance" : 100,
-                    "authenticated_docs":"",
+                    "authenticated_docs":"  ",
                     "transaction":get_transaction(address)
                 })
                 log_in_user(email)
