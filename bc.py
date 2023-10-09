@@ -7,8 +7,7 @@ import os
 import json
 
 from block import Block
-from wallet import Wallet
-from tx import Transaction
+
 
 INITIAL_BITS = 0x1e777777
 MAX_32BIT = 0xffffffff
@@ -41,50 +40,27 @@ class BlockDecoder(json.JSONDecoder):
         
 class Blockchain:
     def __init__(self):
-        # self.authorities = AUTH
         self.blockchain = self.load_blocks()
-        self.required_signatures = 2
-    
-    def create_genesis_block(self):
-        return Block(INITIAL_BITS,0,"Genesis Block", datetime.datetime.now(), "", "Shin").to_json()
     
     def get_chain_length(self):
         return len(self.blockchain)
-    
-    def get_last_block_hash(self):
-       return self.blockchain[-1]["block_hash"]
-    
-    def get_block_address(self,block):
-       return block.tx.address
         
     def getblockinfo(self):
        return print(json.dumps(self.blockchain, indent=2,sort_keys=True, ensure_ascii = False, cls = BlockEncoder))
 
-    
     def add_block(self, block):
         self.blockchain.append(block)
         self.save_block(self.blockchain)
 
     
-    def verify_signed_message(self, message, signature, public_key): #validate Transaction
-        public_key_bytes = binascii.unhexlify(public_key)
-        signature_bytes = binascii.unhexlify(signature)
-        vk = ecdsa.VerifyingKey.from_string(public_key_bytes, curve=ecdsa.SECP256k1)
-        valid = vk.verify(signature_bytes, str(message).encode())
-        return valid
+    # def verify_signed_message(self, message, signature, public_key): #validate Transaction
+    #     public_key_bytes = binascii.unhexlify(public_key)
+    #     signature_bytes = binascii.unhexlify(signature)
+    #     vk = ecdsa.VerifyingKey.from_string(public_key_bytes, curve=ecdsa.SECP256k1)
+    #     valid = vk.verify(signature_bytes, str(message).encode())
+    #     return valid
 
     def mining(self, block):
-        # approvals = []
-        # start_time = int(time.time() * 1000)
-        # for authority in self.authorities:
-        #     approve = input("Enter signature from {} (y/n): ".format(authority.name))
-        #     if approve == 'y':
-        #         approvals.append(authority)
-        #         s = authority.sign_transaction(block.tx)
-        #         block.signatures.append(s)
-        #         if not self.verify_signed_message(block.tx, s, authority.signature): 
-        #             print("ERROR: SIGNATURE UNVERIFIED")
-        # if len(approvals) >= self.required_signatures:
         block.prev_hash = self.blockchain[-1].hash
         start_time = int(time.time() * 1000)
         for n in range(MAX_32BIT + 1):
@@ -100,21 +76,20 @@ class Blockchain:
                     block.bits = new_bits
                 end_time = int(time.time()*1000)
                 block.elapsed_time = str((end_time - start_time) / (1000.0)) + "秒"
-                self.add_block(block)
+                self.blockchain.append(block)
+                self.save_block(self.blockchain)
                 print("Block is added to the blockchain")
                 return
-        # else:
-        #     print("Block is not added: insufficient signatures")
 
     def get_retarget_bits(self):
       if len(self.blockchain) == 0 or len(self.blockchain) % 5 != 0:
         return -1
       expected_time = 140 * 5
 
-      if len(self.blockchain) != 5:
-        first_block = self.blockchain[(1 + 5)]
-      else:
-        first_block = self.blockchain[0]
+      counter = int(len(self.blockchain)/5)
+
+      first_block = self.blockchain[5*(counter-1)]
+
       last_block = self.blockchain[-1]
 
       first_time = first_block.timestamp.timestamp()
@@ -133,10 +108,10 @@ class Blockchain:
       exponent_bytes = (last_block.bits >> 24) -3
       exponent_bits = exponent_bytes * 8
       temp_bits = new_target >> exponent_bits
-      if temp_bits != temp_bits & 0xffffff:
+      if temp_bits != temp_bits & 0xffffff: # if new target is too big
         exponent_bytes += 1
         exponent_bits += 8
-      elif temp_bits == temp_bits & 0xffff:
+      elif temp_bits == temp_bits & 0xffff:# if new target si too small
         exponent_bytes -= 1
         exponent_bits -= 8
       return ((exponent_bytes + 3) << 24) | (new_target >> exponent_bits) 

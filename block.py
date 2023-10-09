@@ -16,8 +16,8 @@ class Block:
     def generate_hash(self):
         tx_str = str(self.tx)  # convert data to string
         sign_str = ''.join(self.signatures)  # concatenate signatures
-        block_contents = tx_str + self.prev_hash + sign_str + hex(self.bits)[2:] + str(self.nonce)  # concatenate block data
-        h = hashlib.sha256(block_contents.encode()).hexdigest()
+        block_header = str(self.index) + tx_str + self.prev_hash + sign_str + str(self.nonce)  # concatenate block data
+        h = hashlib.sha256(block_header.encode()).hexdigest()
         self.hash = h
         return h
 

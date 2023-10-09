@@ -12,15 +12,15 @@ from bc import Blockchain
 
 JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJiYjM1ZDA1OS00YzFmLTQ5MDAtYTRiZS01YjllNzU2YWQ0OTYiLCJlbWFpbCI6InNhbW15LnNhbjIwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTlmY2Y0OTFmMmJkZjM2YjY3MmUiLCJzY29wZWRLZXlTZWNyZXQiOiIyZTc0YmQ4Mzc2NDlkODBmZDk5YjA1OGFjYjdlOWJiMDI1ZTBjY2FlNDJiYzY4OGFlZjBlZmRiYTAyMjg0OTYyIiwiaWF0IjoxNjg5NTA3ODA2fQ.x1EfjzA_i5zNv4kj4sXii0vSMuvjOwNyVG-hv0TyM24"
 chain = Blockchain()
-app = Flask(__name__, static_url_path='/static')
+app = Flask(__name__, static_url_path='/test/static')
 
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'samuel201'
+app.config['MYSQL_HOST'] = 'database-1.cbynwbdxruvq.ap-northeast-1.rds.amazonaws.com'
+app.config['MYSQL_USER'] = 'admin'
+app.config['MYSQL_PASSWORD'] = 'password'
 app.config['MYSQL_DB'] = 'db'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
-app.config['MONGO_URI'] = "mongodb://localhost:27017/local"
+app.config['MONGO_URI'] = "mongodb+srv://admin:Password123!@cluster0.g5bsbpb.mongodb.net/wallets"
 
 mysql = MySQL(app)
 mongo_client = PyMongo(app)
@@ -52,16 +52,16 @@ def log_in_auth(email):
 def update_wallet_info(wallet,login_id):
     updated_tx = get_transaction(wallet["address"])
     update_tx_cmd = {"$set": {"transaction": updated_tx}}
-    mongo_db.wallets.update_one(wallet, update_tx_cmd)
-    wallet = mongo_db.wallets.find_one({'login_id': login_id})
+    mongo_db.user_wallets.update_one(wallet, update_tx_cmd)
+    wallet = mongo_db.user_wallets.find_one({'login_id': login_id})
     updated_balance = update_balance(wallet["address"])
     update_balance_cmd = {"$set": {"balance": updated_balance}}
-    mongo_db.wallets.update_one(wallet, update_balance_cmd)
-    wallet = mongo_db.wallets.find_one({'login_id': login_id})
+    mongo_db.user_wallets.update_one(wallet, update_balance_cmd)
+    wallet = mongo_db.user_wallets.find_one({'login_id': login_id})
     updated_docs = update_docs(wallet["address"])
     update_docs_cmd ={"$set": {"authenticated_docs": updated_docs}}
-    mongo_db.wallets.update_one(wallet, update_docs_cmd)
-    wallet = mongo_db.wallets.find_one({'login_id': login_id})
+    mongo_db.user_wallets.update_one(wallet, update_docs_cmd)
+    wallet = mongo_db.user_wallets.find_one({'login_id': login_id})
     return wallet
 
 def update_auth_wallet_info(wallet,login_id):
@@ -80,7 +80,7 @@ def wallet_page():
     login_id=session['login_id']
     acc_type = session['account_type']
     if acc_type == "User":
-        wallet = mongo_db.wallets.find_one({'login_id': login_id})
+        wallet = mongo_db.user_wallets.find_one({'login_id': login_id})
         wallet = update_wallet_info(wallet,login_id)
         links = get_doc_link(wallet["address"])
         homelink = "/homepage"
@@ -100,7 +100,7 @@ def send():
     acc_type = session['account_type']
     login_id=session['login_id']
     if acc_type == "User":
-        wallet = mongo_db.wallets.find_one({'login_id': login_id})
+        wallet = mongo_db.user_wallets.find_one({'login_id': login_id})
         wallet = update_wallet_info(wallet,login_id)
         homelink = "/homepage"
     else:
@@ -179,7 +179,7 @@ def upload():
     login_id=session['login_id']
     name = session['name']
     email = session['email']
-    wallet = mongo_db.wallets.find_one({'login_id': login_id})
+    wallet = mongo_db.user_wallets.find_one({'login_id': login_id})
     author = wallet["address"]
     author_priv_key = str_to_signing_key(wallet["private_key"])
     uploaded_docs=doc.getsome("doc_author",author)
@@ -196,7 +196,8 @@ def upload():
         # Check if the file is empty
         if uploaded_file.filename == '':
             return 'No file selected.', 400
-        file_path = 'static/uploaded-file/' + uploaded_file.filename
+        file_path = 'static/uploadedfile/' + uploaded_file.filename
+        print("Saving file to:", file_path) 
         uploaded_file.save(file_path)
         # Open the uploaded file using PyPDF2
         pdf_reader = PyPDF2.PdfReader(uploaded_file)
@@ -265,7 +266,7 @@ def authenticate():
 
 @app.route("/authenticate/<string:docname>")
 def view(docname):
-     pdf_path = 'static/uploaded-file/' + docname
+     pdf_path = 'static/uploadedfile/' + docname
      return send_file(pdf_path, mimetype='application/pdf')
 
 @app.route("/authenticate/<int:id>")
@@ -291,7 +292,7 @@ def sign(id):
     sql_raw(sql_command)
     auth_signs = [auth_sign["signature"] for auth_sign in auth_session_table.getsome("doc_id",id)]
     if len([value for value in auth_signs if value is not None]) == 3:
-        file_path ='static/uploaded-file/' + doc_name
+        file_path ='static/uploadedfile/' + doc_name
         tx=""
         block = Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", author_address)
         block.signatures = auth_signs
@@ -344,7 +345,7 @@ def reject(id):
     login_id = session['login_id']
     auth_session_ids = [auth_sess_id["auth_session_id"] for auth_sess_id in auth_session_table.getsome("doc_id",id)]
     doc_name = doc_table.getone("doc_id", id)["doc_name"]
-    file_path ='static/uploaded-file/' + doc_name
+    file_path ='static/uploadedfile/' + doc_name
     for auth_sess_id in auth_session_ids:
             auth_session_table.deleteone("auth_session_id",auth_sess_id)
     doc_table.deleteone("doc_id",id)
@@ -383,7 +384,7 @@ def signup():
                 password = sha256_crypt.hash(form.password.data)
                 users.insert(first_name, last_name, email, password)
                 login_id=users.getone("email",email)["user_id"]
-                mongo_db.wallets.insert_one({
+                mongo_db.user_wallets.insert_one({
                     "login_id": login_id,
                     "private_key" : priv_key_string,
                     "public_key" : pub_key_string,

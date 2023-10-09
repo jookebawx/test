@@ -31,7 +31,6 @@ class Table():
         data = cur.fetchall(); return data
 
     #get one value from the table based on a column's data
-    
     def getsome(self, search, value):
         data = {}; cur = mysql.connection.cursor()
         result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
@@ -61,17 +60,17 @@ class Table():
         cur = mysql.connection.cursor()
         cur.execute("DELETE from %s where %s = \"%s\"" %(self.table, search, value))
         mysql.connection.commit(); cur.close()
-
-    #delete all values from the table.
-    def deleteall(self):
-        self.drop() #remove table and recreate
-        self.__init__(self.table, *self.columnsList)
-
+    
     #remove table from mysql
     def drop(self):
         cur = mysql.connection.cursor()
         cur.execute("DROP TABLE %s" %self.table)
         cur.close()
+
+    #delete all values from the table.
+    def deleteall(self):
+        self.drop() #remove table and recreate
+        self.__init__(self.table, *self.columnsList)
 
     #insert values into the table
     def insert(self, *args):
