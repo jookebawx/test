@@ -197,7 +197,6 @@ def upload():
         if uploaded_file.filename == '':
             return 'No file selected.', 400
         file_path = 'static/uploaded-file/' + uploaded_file.filename
-        print("Saving file to:", file_path) 
         uploaded_file.save(file_path)
         # Open the uploaded file using PyPDF2
         pdf_reader = PyPDF2.PdfReader(uploaded_file)
