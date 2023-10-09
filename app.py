@@ -196,7 +196,7 @@ def upload():
         # Check if the file is empty
         if uploaded_file.filename == '':
             return 'No file selected.', 400
-        file_path = 'static/uploadedfile/' + uploaded_file.filename
+        file_path = 'static/uploaded-file/' + uploaded_file.filename
         print("Saving file to:", file_path) 
         uploaded_file.save(file_path)
         # Open the uploaded file using PyPDF2
@@ -266,7 +266,7 @@ def authenticate():
 
 @app.route("/authenticate/<string:docname>")
 def view(docname):
-     pdf_path = 'static/uploadedfile/' + docname
+     pdf_path = 'static/uploaded-file/' + docname
      return send_file(pdf_path, mimetype='application/pdf')
 
 @app.route("/authenticate/<int:id>")
@@ -292,7 +292,7 @@ def sign(id):
     sql_raw(sql_command)
     auth_signs = [auth_sign["signature"] for auth_sign in auth_session_table.getsome("doc_id",id)]
     if len([value for value in auth_signs if value is not None]) == 3:
-        file_path ='static/uploadedfile/' + doc_name
+        file_path ='static/uploaded-file/' + doc_name
         tx=""
         block = Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", author_address)
         block.signatures = auth_signs
@@ -345,7 +345,7 @@ def reject(id):
     login_id = session['login_id']
     auth_session_ids = [auth_sess_id["auth_session_id"] for auth_sess_id in auth_session_table.getsome("doc_id",id)]
     doc_name = doc_table.getone("doc_id", id)["doc_name"]
-    file_path ='static/uploadedfile/' + doc_name
+    file_path ='static/uploaded-file/' + doc_name
     for auth_sess_id in auth_session_ids:
             auth_session_table.deleteone("auth_session_id",auth_sess_id)
     doc_table.deleteone("doc_id",id)
