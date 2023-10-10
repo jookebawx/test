@@ -2,6 +2,7 @@ from flask import Flask, render_template, flash, redirect, url_for, session, req
 from passlib.hash import sha256_crypt
 from flask_mysqldb import MySQL
 from flask_pymongo import PyMongo
+from MySQLdb import _mysql
 
 import hashlib
 import base64
