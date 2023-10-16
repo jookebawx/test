@@ -283,7 +283,7 @@ def view(docname):
     pdf_data = response['Body'].read()
     # You can now work with the file content as needed
     # For example, you can write it to a local file or process it in memory.
-    return send_file(io.BytesIO(pdf_data),as_attachment=False,mimetype='application/pdf')
+    return send_file(BytesIO(pdf_data),as_attachment=False,mimetype='application/pdf')
 
      
 @app.route("/authenticate/<int:id>")
