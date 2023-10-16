@@ -1,6 +1,6 @@
 
 from app import mysql
-
+import re
 class Table():
     def __init__(self, table_name, *args):
         self.table = table_name
@@ -20,50 +20,50 @@ class Table():
                 else:
                     create_data += "%s varchar(500)," %column
 
-            cur = mysql.connect.cursor() #create the table
+            cur = mysql.connection.cursor() #create the table
             cur.execute("CREATE TABLE %s(%s)" %(self.table, create_data[:len(create_data)-1]))
             cur.close()
 
     #get all the values from the table
     def getall(self):
-        cur = mysql.connect.cursor()
+        cur = mysql.connection.cursor()
         result = cur.execute("SELECT * FROM %s" %self.table)
         data = cur.fetchall(); return data
 
     #get one value from the table based on a column's data
     def getsome(self, search, value):
-        data = {}; cur = mysql.connect.cursor()
+        data = {}; cur = mysql.connection.cursor()
         result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
         if result > 0: data = cur.fetchall()
         cur.close(); return data
     
     def getby2value(self, search1, value1, search2, value2):
-        data = {}; cur = mysql.connect.cursor()
+        data = {}; cur = mysql.connection.cursor()
         result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\" and %s = \"%s\"" %(self.table, search1, value1, search2, value2))
         if result > 0: data = cur.fetchone()
         cur.close(); return data
     
     def get_rand(self, value):
-        data = {}; cur = mysql.connect.cursor()
+        data = {}; cur = mysql.connection.cursor()
         result = cur.execute("SELECT * FROM %s ORDER BY RAND() LIMIT %s" %(self.table, value))
         if result > 0: data = cur.fetchall()
         cur.close(); return data
     
     def getone(self, search, value):
-        data = {}; cur = mysql.connect.cursor()
+        data = {}; cur = mysql.connection.cursor()
         result = cur.execute("SELECT * FROM %s WHERE %s = \"%s\"" %(self.table, search, value))
         if result > 0: data = cur.fetchone()
         cur.close(); return data
     
     #delete a value from the table based on column's data
     def deleteone(self, search, value):
-        cur = mysql.connect.cursor()
+        cur = mysql.connection.cursor()
         cur.execute("DELETE from %s where %s = \"%s\"" %(self.table, search, value))
-        mysql.connect.commit(); cur.close()
+        mysql.connection.commit(); cur.close()
     
     #remove table from mysql
     def drop(self):
-        cur = mysql.connect.cursor()
+        cur = mysql.connection.cursor()
         cur.execute("DROP TABLE %s" %self.table)
         cur.close()
 
@@ -80,9 +80,9 @@ class Table():
                 data += "NULL,"
             else:
                 data += "\'%s\'," %(arg)
-        cur = mysql.connect.cursor()
+        cur = mysql.connection.cursor()
         cur.execute("INSERT INTO %s %s VALUES (%s)" %(self.table, self.columnforinsert, data[:-1]))
-        mysql.connect.commit()
+        mysql.connection.commit()
         cur.close()
 
 
@@ -90,13 +90,13 @@ class Table():
 
 
 def sql_raw(execution):
-    cur = mysql.connect.cursor()
+    cur = mysql.connection.cursor()
     cur.execute(execution)
-    mysql.connect.commit()
+    mysql.connection.commit()
     cur.close()
 
 def isnewtable(table_name):
-    cur = mysql.connect.cursor()
+    cur = mysql.connection.cursor()
     try:
         result = cur.execute("SELECT * from %s" %table_name)
         cur.close()

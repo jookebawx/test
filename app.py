@@ -2,8 +2,9 @@ from flask import Flask, render_template, flash, redirect, url_for, session, req
 from passlib.hash import sha256_crypt
 from flask_mysqldb import MySQL
 from flask_pymongo import PyMongo
-from MySQLdb import _mysql
-
+from flask_s3 import FlaskS3
+from io import BytesIO
+import boto3 
 import hashlib
 import base64
 import requests
@@ -13,20 +14,29 @@ from bc import Blockchain
 
 JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJiYjM1ZDA1OS00YzFmLTQ5MDAtYTRiZS01YjllNzU2YWQ0OTYiLCJlbWFpbCI6InNhbW15LnNhbjIwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTlmY2Y0OTFmMmJkZjM2YjY3MmUiLCJzY29wZWRLZXlTZWNyZXQiOiIyZTc0YmQ4Mzc2NDlkODBmZDk5YjA1OGFjYjdlOWJiMDI1ZTBjY2FlNDJiYzY4OGFlZjBlZmRiYTAyMjg0OTYyIiwiaWF0IjoxNjg5NTA3ODA2fQ.x1EfjzA_i5zNv4kj4sXii0vSMuvjOwNyVG-hv0TyM24"
 chain = Blockchain()
-app = Flask(__name__, static_url_path='/static')
+app = Flask(__name__)
 
-app.config['MYSQL_HOST'] = 'database-1.cbynwbdxruvq.ap-northeast-1.rds.amazonaws.com'
+app.config['MYSQL_HOST'] = 'database-1.cbtwxvlpdwg2.ap-northeast-1.rds.amazonaws.com'
 app.config['MYSQL_USER'] = 'admin'
 app.config['MYSQL_PASSWORD'] = 'password'
 app.config['MYSQL_DB'] = 'db'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+
+app.config['FLASKS3_BUCKET_NAME'] = 'arcanabucket123'
+app.config['FLASKS3_REGION'] = 'ap-northeast-1'
+app.config['FLASKS3_USE_HTTPS'] = True
 
 app.config['MONGO_URI'] = "mongodb+srv://admin:Password123!@cluster0.g5bsbpb.mongodb.net/wallets"
 
 mysql = MySQL(app)
 mongo_client = PyMongo(app)
 mongo_db = mongo_client.db
-
+s3staticflask= FlaskS3(app)
+s3 = boto3.client(
+    's3',
+    aws_access_key_id='AKIAWUKOLQHU554AKXV4',
+    aws_secret_access_key='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'
+)
 
 def log_in_user(email):
     from sqlhelper import Table
@@ -197,26 +207,28 @@ def upload():
         # Check if the file is empty
         if uploaded_file.filename == '':
             return 'No file selected.', 400
-        file_path = 'static/uploaded-file/' + uploaded_file.filename
-        uploaded_file.save(file_path)
         # Open the uploaded file using PyPDF2
-        pdf_reader = PyPDF2.PdfReader(uploaded_file)
-
+        current_docname= uploaded_file.filename
+        file_key = 'static/uploaded-file/' + current_docname
+        s3.upload_fileobj(uploaded_file, app.config['FLASKS3_BUCKET_NAME'], file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': 'application/pdf'})  # Optional: make the file public
         # Extract the text from the PDF file
         text = ''
-        for i in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[i]
-            text += page.extract_text()
+        with s3.get_object(Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=file_key)['Body'] as pdf_file:
+            pdf_data = BytesIO(pdf_file.read())
+            pdf_reader = PyPDF2.PdfReader(pdf_data)
+            for i in range(len(pdf_reader.pages)):
+                page = pdf_reader.pages[i]
+                text += page.extract_text()
         hash = hashlib.sha256(text.encode()).hexdigest()
         pre_tx={
             "type": "Docs",
-            "doc_name": uploaded_file.filename,
+            "doc_name": current_docname,
             "doc_hash": hash,
         }
         author_sign = sign_transaction(author_priv_key, pre_tx)
-        if isnewdoc(uploaded_file.filename, hash):
-            doc.insert(uploaded_file.filename, hash, author, author_sign)
-            doc_id = doc.getone("doc_name", uploaded_file.filename)["doc_id"]
+        if isnewdoc(current_docname, hash):
+            doc.insert(current_docname, hash, author, author_sign)
+            doc_id = doc.getone("doc_name", current_docname)["doc_id"]
             if isnewtable("auth_session"):
                 command = """
                 CREATE TABLE auth_session (
@@ -266,9 +278,14 @@ def authenticate():
 
 @app.route("/authenticate/<string:docname>")
 def view(docname):
-     pdf_path = 'static/uploaded-file/' + docname
-     return send_file(pdf_path, mimetype='application/pdf')
+    file_key= f"static/uploaded-file/{docname}"
+    response = s3.get_object(Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=file_key)
+    pdf_data = response['Body'].read()
+    # You can now work with the file content as needed
+    # For example, you can write it to a local file or process it in memory.
+    return send_file(io.BytesIO(pdf_data),as_attachment=False,mimetype='application/pdf')
 
+     
 @app.route("/authenticate/<int:id>")
 def sign(id):
     from sqlhelper import Table,sql_raw
@@ -292,7 +309,7 @@ def sign(id):
     sql_raw(sql_command)
     auth_signs = [auth_sign["signature"] for auth_sign in auth_session_table.getsome("doc_id",id)]
     if len([value for value in auth_signs if value is not None]) == 3:
-        file_path ='static/uploaded-file/' + doc_name
+        file_key ='static/uploaded-file/' + doc_name
         tx=""
         block = Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", author_address)
         block.signatures = auth_signs
@@ -308,9 +325,10 @@ def sign(id):
         payload={'pinataOptions': '{"cidVersion": 1}',
         'pinataMetadata':  doc_metadata}
         print(payload)
-        file = open(file_path, 'rb')
+        response = s3.get_object(Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=file_key)
+        file_content = response['Body'].read()
         files=[
-        ('file',(doc_name,file,'application/octet-stream'))
+        ('file',(doc_name,file_content,'application/octet-stream'))
         ]
         headers = {
             'Authorization': 'Bearer %s'%(JWT)
@@ -332,9 +350,7 @@ def sign(id):
         for auth_sess_id in auth_session_ids:
             auth_session_table.deleteone("auth_session_id",auth_sess_id)
         doc_table.deleteone("doc_id",id)
-        file.close()
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        s3.delete_object(Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=file_key)
     return redirect(url_for('authenticate'))
 
 @app.route("/authenticate/reject+<int:id>")
@@ -349,8 +365,8 @@ def reject(id):
     for auth_sess_id in auth_session_ids:
             auth_session_table.deleteone("auth_session_id",auth_sess_id)
     doc_table.deleteone("doc_id",id)
-    if os.path.exists(file_path):
-            os.remove(file_path)
+    file_key= f"static/uploaded-file/{doc_name}"
+    s3.delete_object(Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=file_key)
     return redirect(url_for('authenticate'))
 
 @app.route("/logout")
