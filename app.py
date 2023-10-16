@@ -203,22 +203,18 @@ def upload():
 
         # Get the uploaded file from the request object
         uploaded_file = request.files['file']
-
         # Check if the file is empty
         if uploaded_file.filename == '':
             return 'No file selected.', 400
-        # Open the uploaded file using PyPDF2
         current_docname= uploaded_file.filename
-        file_key = 'static/uploaded-file/' + current_docname
-        s3.upload_fileobj(uploaded_file, app.config['FLASKS3_BUCKET_NAME'], file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': 'application/pdf'})  # Optional: make the file public
+        # Open the uploaded file using PyPDF2
+        pdf_reader = PyPDF2.PdfReader(uploaded_file)
         # Extract the text from the PDF file
         text = ''
-        with s3.get_object(Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=file_key)['Body'] as pdf_file:
-            pdf_data = BytesIO(pdf_file.read())
-            pdf_reader = PyPDF2.PdfReader(pdf_data)
-            for i in range(len(pdf_reader.pages)):
+        for i in range(len(pdf_reader.pages)):
                 page = pdf_reader.pages[i]
                 text += page.extract_text()
+        
         hash = hashlib.sha256(text.encode()).hexdigest()
         pre_tx={
             "type": "Docs",
@@ -226,6 +222,7 @@ def upload():
             "doc_hash": hash,
         }
         author_sign = sign_transaction(author_priv_key, pre_tx)
+        
         if isnewdoc(current_docname, hash):
             doc.insert(current_docname, hash, author, author_sign)
             doc_id = doc.getone("doc_name", current_docname)["doc_id"]
@@ -249,6 +246,9 @@ def upload():
             signature = None
             for id in rand_auth_ids:
                 auth_session.insert(doc_id, id, signature)
+            uploaded_file.seek(0) 
+            file_key = 'static/uploaded-file/' + current_docname
+            s3.upload_fileobj(uploaded_file, app.config['FLASKS3_BUCKET_NAME'], file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': 'application/pdf'})  # Optional: make the file public
             return render_template('SubmitPage.html',message=message,uploaded_doc=uploaded_docname, name=name, email=email)
         else:
             message = "Your document already exist"
