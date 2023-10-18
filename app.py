@@ -34,8 +34,8 @@ mongo_db = mongo_client.db
 s3staticflask= FlaskS3(app)
 s3 = boto3.client(
     's3',
-    aws_access_key_id='AKIAWUKOLQHU554AKXV4',
-    aws_secret_access_key='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'
+    aws_access_key_id='',
+    aws_secret_access_key=''
 )
 
 def log_in_user(email):
