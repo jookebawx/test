@@ -27,15 +27,16 @@ app.config['FLASKS3_REGION'] = 'ap-northeast-1'
 app.config['FLASKS3_USE_HTTPS'] = True
 
 app.config['MONGO_URI'] = "mongodb+srv://admin:Password123!@cluster0.g5bsbpb.mongodb.net/wallets"
-
+accesskey="QUtJQVdVS09MUUhVUTJBVTM2TVk="
+secretkey="SlQwb3ZXazJETzRoc2pCc2VsZVBVd2llRGJLSk0rSk5yUHExUHltMQ=="
 mysql = MySQL(app)
 mongo_client = PyMongo(app)
 mongo_db = mongo_client.db
 s3staticflask= FlaskS3(app)
 s3 = boto3.client(
     's3',
-    aws_access_key_id='',
-    aws_secret_access_key=''
+    aws_access_key_id= base64.b64decode(accesskey.encode('utf-8')).decode('utf-8'),
+    aws_secret_access_key=base64.b64decode(secretkey.encode('utf-8')).decode('utf-8')
 )
 
 def log_in_user(email):
@@ -358,10 +359,8 @@ def reject(id):
     from sqlhelper import Table,sql_raw
     doc_table = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
     auth_session_table = Table("auth_session","doc_id","authenticator_id","signature","auth_session_id")
-    login_id = session['login_id']
     auth_session_ids = [auth_sess_id["auth_session_id"] for auth_sess_id in auth_session_table.getsome("doc_id",id)]
     doc_name = doc_table.getone("doc_id", id)["doc_name"]
-    file_path ='static/uploaded-file/' + doc_name
     for auth_sess_id in auth_session_ids:
             auth_session_table.deleteone("auth_session_id",auth_sess_id)
     doc_table.deleteone("doc_id",id)
