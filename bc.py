@@ -1,14 +1,20 @@
 
-import ecdsa
-import binascii
 import time
 import datetime
 import os
 import json
-
+import boto3
+import base64
 from block import Block
 
-
+accesskey="QUtJQVdVS09MUUhVUTJBVTM2TVk="
+secretkey="SlQwb3ZXazJETzRoc2pCc2VsZVBVd2llRGJLSk0rSk5yUHExUHltMQ=="
+s3 = boto3.client(
+    's3',
+    aws_access_key_id= base64.b64decode(accesskey.encode('utf-8')).decode('utf-8'),
+    aws_secret_access_key=base64.b64decode(secretkey.encode('utf-8')).decode('utf-8')
+)
+S3_BUCKET_NAME = 'arcanabucket123'
 INITIAL_BITS = 0x1e777777
 MAX_32BIT = 0xffffffff
 # AUTH = [Wallet("Authority 1",1), Wallet("Authority 2",1), Wallet("Authority 3",1)]
@@ -139,16 +145,10 @@ class Blockchain:
     
     def load_blocks(self):
         # Load the blocks from a file
-        try:
-            if os.path.getsize("blocks.dat"):
-                with open("blocks.dat", "rb") as f:
-                    blocks_data = json.load(f, cls=BlockDecoder)
-                    blocks = [b for b in blocks_data if isinstance(b, Block)]
-            else:
-                blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
-        except FileNotFoundError:
-            blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
-        return blocks 
+        response= s3.get_object(Bucket=S3_BUCKET_NAME, Key="blocks.dat")
+        current_chain_data = response['Body'].read().decode()
+        current_chain = json.loads(current_chain_data, cls=BlockDecoder)
+        return current_chain
        
      
     def save_block(self,block):

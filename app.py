@@ -4,7 +4,8 @@ from flask_mysqldb import MySQL
 from flask_pymongo import PyMongo
 from flask_s3 import FlaskS3
 from io import BytesIO
-import boto3 
+
+
 import hashlib
 import base64
 import requests
@@ -13,7 +14,7 @@ from wallet import *
 from bc import Blockchain
 
 JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJiYjM1ZDA1OS00YzFmLTQ5MDAtYTRiZS01YjllNzU2YWQ0OTYiLCJlbWFpbCI6InNhbW15LnNhbjIwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTlmY2Y0OTFmMmJkZjM2YjY3MmUiLCJzY29wZWRLZXlTZWNyZXQiOiIyZTc0YmQ4Mzc2NDlkODBmZDk5YjA1OGFjYjdlOWJiMDI1ZTBjY2FlNDJiYzY4OGFlZjBlZmRiYTAyMjg0OTYyIiwiaWF0IjoxNjg5NTA3ODA2fQ.x1EfjzA_i5zNv4kj4sXii0vSMuvjOwNyVG-hv0TyM24"
-chain = Blockchain()
+
 app = Flask(__name__)
 
 app.config['MYSQL_HOST'] = 'database-1.cbtwxvlpdwg2.ap-northeast-1.rds.amazonaws.com'
@@ -33,11 +34,7 @@ mysql = MySQL(app)
 mongo_client = PyMongo(app)
 mongo_db = mongo_client.db
 s3staticflask= FlaskS3(app)
-s3 = boto3.client(
-    's3',
-    aws_access_key_id= base64.b64decode(accesskey.encode('utf-8')).decode('utf-8'),
-    aws_secret_access_key=base64.b64decode(secretkey.encode('utf-8')).decode('utf-8')
-)
+
 
 def log_in_user(email):
     from sqlhelper import Table
@@ -89,6 +86,7 @@ def update_auth_wallet_info(wallet,login_id):
 
 @app.route("/wallet", methods = ['GET', 'POST'])
 def wallet_page():
+    
     login_id=session['login_id']
     acc_type = session['account_type']
     if acc_type == "User":
@@ -107,7 +105,7 @@ def wallet_page():
 @app.route("/send", methods = ['GET', 'POST'])
 def send():
     from formhelper import SendMoneyForm
-
+    chain = Blockchain()
     form = SendMoneyForm(request.form)
     acc_type = session['account_type']
     login_id=session['login_id']
@@ -137,7 +135,9 @@ def send():
             block = Block(INITIAL_BITS,chain.get_chain_length(),tx,datetime.datetime.now(), "", wallet["address"])
             priv_key = str_to_signing_key(wallet["private_key"])
             block.signatures = sign_transaction(priv_key,tx)
-            chain.mining(block)
+            block_key = f"tx/{block.index}.json"
+            json_data = json.dumps(block, cls=BlockEncoder)
+            s3.put_object(Body=json_data, Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=block_key)
             if acc_type == "User":
                 wallet = update_wallet_info(wallet,login_id)
             else:
@@ -184,6 +184,7 @@ def login():
 
 @app.route("/upload", methods = ['GET', 'POST'])
 def upload():
+    
     import PyPDF2
     from sqlhelper import Table, isnewdoc, isnewtable,sql_raw
     doc = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
@@ -285,10 +286,10 @@ def view(docname):
     # You can now work with the file content as needed
     # For example, you can write it to a local file or process it in memory.
     return send_file(BytesIO(pdf_data),as_attachment=False,mimetype='application/pdf')
-
      
 @app.route("/authenticate/<int:id>")
 def sign(id):
+    chain = Blockchain()
     from sqlhelper import Table,sql_raw
     doc_table = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
     auth_session_table = Table("auth_session","doc_id","authenticator_id","signature","auth_session_id")
@@ -346,7 +347,9 @@ def sign(id):
             "ipfs_hash": cid
         }
         block.tx = tx
-        chain.mining(block)  
+        block_key = f"tx/{block.index}.json"
+        json_data = json.dumps(block, cls=BlockEncoder)
+        s3.put_object(Body=json_data, Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=block_key)
         auth_session_ids = [auth_sess_id["auth_session_id"] for auth_sess_id in auth_session_table.getsome("doc_id",id)]
         for auth_sess_id in auth_session_ids:
             auth_session_table.deleteone("auth_session_id",auth_sess_id)
