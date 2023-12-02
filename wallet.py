@@ -3,48 +3,16 @@ import ecdsa
 import binascii
 import base58
 import json
-import os
-import datetime
+
 import base64
-import boto3
-from block import Block
 
-accesskey="QUtJQVdVS09MUUhVUTJBVTM2TVk="
-secretkey="SlQwb3ZXazJETzRoc2pCc2VsZVBVd2llRGJLSk0rSk5yUHExUHltMQ=="
-s3 = boto3.client(
-    's3',
-    aws_access_key_id= base64.b64decode(accesskey.encode('utf-8')).decode('utf-8'),
-    aws_secret_access_key=base64.b64decode(secretkey.encode('utf-8')).decode('utf-8')
-)
-S3_BUCKET_NAME = 'arcanabucket123'
 
-INITIAL_BITS = 0x1e777777
+from bc import *
 
-class BlockDecoder(json.JSONDecoder):
-    def __init__(self, *args, **kwargs):
-        super().__init__(object_hook=self.dict_to_block, *args, **kwargs)
-
-    def dict_to_block(self, dct):
-        if all(k in dct for k in ["index", "bits", "nonce", "prev_hash","transactions", "timestamp", "author", "signatures", "elapsed_time", "hash"]):
-            iso_timestamp = dct["timestamp"].replace('/', '-').replace(' ', 'T')
-            timestamp = datetime.datetime.fromisoformat(iso_timestamp)
-            b=Block(dct["bits"], dct["index"], dct["transactions"], timestamp, dct["prev_hash"],dct["author"])
-            b.signatures = dct["signatures"]
-            b.hash = dct["hash"]
-            b.elapsed_time = dct["elapsed_time"]
-            return b
-        return dct
-
-class BlockEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):  # Check if the object is a datetime instance
-            return obj.isoformat()  # Serialize datetime object using ISO format
-        elif isinstance(obj, Block):
-            return obj.to_json()  # Serialize Block object using its dictionary representation
-        return json.JSONEncoder.default(self, obj)
+INITIAL_BITS = 0x1d777777
 
         
-def load_blocks():
+def Blockchain():
         # Load the blocks from a file
         response= s3.get_object(Bucket=S3_BUCKET_NAME, Key="blocks.dat")
         current_chain_data = response['Body'].read().decode()
@@ -80,12 +48,12 @@ def generate_address(pub_key):
     return wallet_address
 
 def get_transaction(address):
-    bc = load_blocks()
+    bc = Blockchain()
     tx =[json.dumps(b, indent=2,sort_keys=True, ensure_ascii = False, cls = BlockEncoder) for b in bc if b.author == address or b.tx.get("receiver")== address]
     return tx
 
 def update_balance(address):
-    bc = load_blocks()
+    bc = Blockchain()
     tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Crypto"]
     balance = 100
     for t in tx:
@@ -96,13 +64,13 @@ def update_balance(address):
     return balance
 
 def update_docs(address):
-    bc = load_blocks()
+    bc = Blockchain()
     tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
     docs = [t.get("doc_name") for t in tx]
     return docs
     
 def get_doc_link(address):
-    bc = load_blocks()
+    bc = Blockchain()
     tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
     links = [(t.get("doc_name"),"https://gateway.pinata.cloud/ipfs/%s"%(t.get("ipfs_hash"))) for t in tx]
     return links

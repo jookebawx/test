@@ -1,15 +1,21 @@
 
-import ecdsa
-import binascii
+
 import time
 import datetime
-import os
+import boto3
 import json
-
+import base64
 from block import Block
 
-
-INITIAL_BITS = 0x1e777777
+accesskey="QUtJQVdVS09MUUhVUTJBVTM2TVk="
+secretkey="SlQwb3ZXazJETzRoc2pCc2VsZVBVd2llRGJLSk0rSk5yUHExUHltMQ=="
+s3 = boto3.client(
+    's3',
+    aws_access_key_id= base64.b64decode(accesskey.encode('utf-8')).decode('utf-8'),
+    aws_secret_access_key=base64.b64decode(secretkey.encode('utf-8')).decode('utf-8')
+)
+S3_BUCKET_NAME = 'arcanabucket123'
+INITIAL_BITS = 0x1d777777
 MAX_32BIT = 0xffffffff
 # AUTH = [Wallet("Authority 1",1), Wallet("Authority 2",1), Wallet("Authority 3",1)]
 
@@ -48,111 +54,9 @@ class Blockchain:
     def getblockinfo(self):
        return print(json.dumps(self.blockchain, indent=2,sort_keys=True, ensure_ascii = False, cls = BlockEncoder))
 
-    def add_block(self, block):
-        self.blockchain.append(block)
-        self.save_block(self.blockchain)
-
-    
-    # def verify_signed_message(self, message, signature, public_key): #validate Transaction
-    #     public_key_bytes = binascii.unhexlify(public_key)
-    #     signature_bytes = binascii.unhexlify(signature)
-    #     vk = ecdsa.VerifyingKey.from_string(public_key_bytes, curve=ecdsa.SECP256k1)
-    #     valid = vk.verify(signature_bytes, str(message).encode())
-    #     return valid
-
-    def mining(self, block):
-        block.prev_hash = self.blockchain[-1].hash
-        start_time = int(time.time() * 1000)
-        for n in range(MAX_32BIT + 1):
-            block.nonce = n
-            if block.check_valid_hash():
-                new_bits = self.get_retarget_bits()
-                if new_bits < 0 :
-                    if len(self.blockchain) < 2:
-                        block.bits = INITIAL_BITS
-                    else:
-                        block.bits = self.blockchain[-1].bits
-                else:
-                    block.bits = new_bits
-                end_time = int(time.time()*1000)
-                block.elapsed_time = str((end_time - start_time) / (1000.0)) + "秒"
-                self.blockchain.append(block)
-                self.save_block(self.blockchain)
-                print("Block is added to the blockchain")
-                return
-
-    def get_retarget_bits(self):
-      if len(self.blockchain) == 0 or len(self.blockchain) % 5 != 0:
-        return -1
-      
-
-      counter = int(len(self.blockchain)/5)
-
-      first_block = self.blockchain[5*(counter-1)]
-
-      last_block = self.blockchain[-1]
-
-      first_time = first_block.timestamp.timestamp()
-      last_time = last_block.timestamp.timestamp()
-      total_time = last_time - first_time
-      expected_time = 60*5
-      target = last_block.calc_target()
-      
-      delta = total_time / expected_time
-      if delta < 0.25:
-        delta = 0.25
-      if delta > 4:
-        delta = 4
-      new_target = int(target * delta)
-
-      exponent_bytes = (last_block.bits >> 24) -3
-      exponent_bits = exponent_bytes * 8
-      temp_bits = new_target >> exponent_bits
-      if temp_bits != temp_bits & 0xffffff: # if new target is too big
-        exponent_bytes += 1
-        exponent_bits += 8
-      elif temp_bits == temp_bits & 0xffff:# if new target si too small
-        exponent_bytes -= 1
-        exponent_bits -= 8
-      return ((exponent_bytes + 3) << 24) | (new_target >> exponent_bits) 
-
-    # def is_chain_valid(self):
-    #     for i in range(1, len(self.blockchain)):
-    #         current_block = self.blockchain[i]
-    #         previous_block = self.blockchain[i-1]
-
-    #         # validate the PoW
-    #         if not Block.check_valid_hash(current_block["block_hash"]):
-    #             print("Current block's hash is not valid")
-    #             return False
-
-    #         # validate the PoA
-    #         if not len(current_block.signatures) >= self.required_signatures + 1 :
-    #             print("Current Block's required signature is not fullfilled")
-    #             return False
-  
-    #         # validate the previous hash
-    #         if current_block.prev_hash != previous_block.hash:
-    #             print("Current block does not match with the blockchain")
-    #             return False     
-    #     return True
-    
     def load_blocks(self):
         # Load the blocks from a file
-        try:
-            if os.path.getsize("blocks.dat"):
-                with open("blocks.dat", "rb") as f:
-                    blocks_data = json.load(f, cls=BlockDecoder)
-                    blocks = [b for b in blocks_data if isinstance(b, Block)]
-            else:
-                blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
-        except FileNotFoundError:
-            blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
-        return blocks 
-       
-     
-    def save_block(self,block):
-        # Save the blocks to a file
-        with open("blocks.dat", "wb") as f:
-            data=json.dumps(block, cls = BlockEncoder)
-            f.write(data.encode('utf-8'))
+        response= s3.get_object(Bucket=S3_BUCKET_NAME, Key="blocks.dat")
+        current_chain_data = response['Body'].read().decode()
+        current_chain = json.loads(current_chain_data, cls=BlockDecoder)
+        return current_chain

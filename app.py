@@ -184,7 +184,6 @@ def login():
 
 @app.route("/upload", methods = ['GET', 'POST'])
 def upload():
-    
     import PyPDF2
     from sqlhelper import Table, isnewdoc, isnewtable,sql_raw
     doc = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
@@ -268,6 +267,7 @@ def authenticate():
     email = session['email']
     doc_id_to_auth = [doc_id['doc_id'] for doc_id in auth_session_table.getsome("authenticator_id", login_id)]
     doc_name_to_auth = []
+    message=""
     for id in doc_id_to_auth:
         docname = doc_table.getone("doc_id",id)
         doc_name_to_auth.append(docname["doc_name"])
@@ -276,7 +276,7 @@ def authenticate():
                     "doc_name": doc_name
                     } for doc_id, doc_name in zip(doc_id_to_auth, doc_name_to_auth)]
     links = [(item["doc_name"],  f'/authenticate/{item["doc_id"]}',f'/authenticate/{item["doc_name"]}',f'/authenticate/reject+{item["doc_id"]}')for item in doc_to_auth]
-    return render_template("authenticate.html", docname=doc_name_to_auth, links=links, name=name, email=email)
+    return render_template("authenticate.html", docname=doc_name_to_auth, links=links, name=name, email=email,message=message)
 
 @app.route("/authenticate/<string:docname>")
 def view(docname):
@@ -294,7 +294,7 @@ def sign(id):
     doc_table = Table("docs","doc_name", "doc_hash", "doc_author","author_sign","doc_id")
     auth_session_table = Table("auth_session","doc_id","authenticator_id","signature","auth_session_id")
     login_id = session['login_id']
-
+    message =""
     hash = doc_table.getone("doc_id",id)["doc_hash"]
     wallet = mongo_db.auth_wallets.find_one({'login_id': login_id})
     priv_key = str_to_signing_key(wallet["private_key"])
@@ -326,7 +326,6 @@ def sign(id):
         url = "https://api.pinata.cloud/pinning/pinFileToIPFS"
         payload={'pinataOptions': '{"cidVersion": 1}',
         'pinataMetadata':  doc_metadata}
-        print(payload)
         response = s3.get_object(Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=file_key)
         file_content = response['Body'].read()
         files=[
@@ -337,8 +336,9 @@ def sign(id):
         }
         response = requests.request("POST", url, headers=headers, data=payload, files=files)
         response_text= json.loads(response.text)
-        duplicate = response_text["isDuplicate"]
-        if duplicate == False:
+        duplicate = response_text.get("isDuplicate")
+        print(duplicate)
+        if duplicate == None:
             cid = response_text["IpfsHash"]
             
             tx={
