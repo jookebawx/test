@@ -15,7 +15,7 @@ s3 = boto3.client(
     aws_secret_access_key=base64.b64decode(secretkey.encode('utf-8')).decode('utf-8')
 )
 S3_BUCKET_NAME = 'arcanabucket123'
-INITIAL_BITS = 0x1e777777
+INITIAL_BITS = 0x1d777777
 MAX_32BIT = 0xffffffff
 # AUTH = [Wallet("Authority 1",1), Wallet("Authority 2",1), Wallet("Authority 3",1)]
 
