@@ -132,7 +132,7 @@ def send():
                 "receiver": receiver_address,
                 "amount": int(amount)
             }
-            block = Block(INITIAL_BITS,0,tx,datetime.datetime.now(), "", wallet["address"])
+            block = Block(INITIAL_BITS,"",tx,datetime.datetime.now(), "", wallet["address"])
             priv_key = str_to_signing_key(wallet["private_key"])
             block.signatures = sign_transaction(priv_key,tx)
             block_key = f"tx/{block.signatures}.json"
@@ -313,7 +313,7 @@ def sign(id):
     if len([value for value in auth_signs if value is not None]) == 3:
         file_key ='static/uploaded-file/' + doc_name
         tx=""
-        block = Block(INITIAL_BITS,0,tx,datetime.datetime.now(), "", author_address)
+        block = Block(INITIAL_BITS,"",tx,datetime.datetime.now(), "", author_address)
         block.signatures = auth_signs
         block.signatures.append(doc_table.getone("doc_id",id)["author_sign"])
         doc_metadata = "{\"name\" : \"%s\",\
