@@ -12,7 +12,12 @@
             {% endfor %}
         </ul>
         
-        <p>transaction: {{ wallet.transaction}}</p>
+        <p>transaction: </p>
+        <ol>
+            {% for tx in wallet.transaction %}
+            <li>{{tx}}</li>
+            {% endfor %}
+        </ol>
         <button type="button" onclick="window.location.href='{{homelink}}'" class="cancelbtn">Back</button>
     </body>
     

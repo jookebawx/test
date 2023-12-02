@@ -11,13 +11,6 @@ from bc import *
 
 INITIAL_BITS = 0x1d777777
 
-        
-def Blockchain():
-        # Load the blocks from a file
-        response= s3.get_object(Bucket=S3_BUCKET_NAME, Key="blocks.dat")
-        current_chain_data = response['Body'].read().decode()
-        current_chain = json.loads(current_chain_data, cls=BlockDecoder)
-        return current_chain
 
 def generate_private_key():
     key = ecdsa.SigningKey.generate(curve = ecdsa.SECP256k1)
@@ -49,12 +42,12 @@ def generate_address(pub_key):
 
 def get_transaction(address):
     bc = Blockchain()
-    tx =[json.dumps(b, indent=2,sort_keys=True, ensure_ascii = False, cls = BlockEncoder) for b in bc if b.author == address or b.tx.get("receiver")== address]
+    tx =[json.dumps(b, cls = BlockEncoder) for b in bc.blockchain if b.author == address or b.tx.get("receiver")== address]
     return tx
 
 def update_balance(address):
     bc = Blockchain()
-    tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Crypto"]
+    tx =[b.tx for b in bc.blockchain if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Crypto"]
     balance = 100
     for t in tx:
         if t.get("receiver") == address:
@@ -65,13 +58,13 @@ def update_balance(address):
 
 def update_docs(address):
     bc = Blockchain()
-    tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
+    tx =[b.tx for b in bc.blockchain if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
     docs = [t.get("doc_name") for t in tx]
     return docs
     
 def get_doc_link(address):
     bc = Blockchain()
-    tx =[b.tx for b in bc if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
+    tx =[b.tx for b in bc.blockchain if (b.author == address or b.tx.get("receiver")== address) and b.tx.get("type")=="Docs"]
     links = [(t.get("doc_name"),"https://gateway.pinata.cloud/ipfs/%s"%(t.get("ipfs_hash"))) for t in tx]
     return links
 
