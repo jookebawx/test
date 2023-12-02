@@ -337,19 +337,22 @@ def sign(id):
         }
         response = requests.request("POST", url, headers=headers, data=payload, files=files)
         response_text= json.loads(response.text)
-        print(response_text)
-        cid = response_text["IpfsHash"]
-        
-        tx={
-            "type": "Docs",
-            "doc_name": doc_name,
-            "doc_hash": hash,
-            "ipfs_hash": cid
-        }
-        block.tx = tx
-        block_key = f"tx/{block.index}.json"
-        json_data = json.dumps(block, cls=BlockEncoder)
-        s3.put_object(Body=json_data, Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=block_key)
+        duplicate = response_text["isDuplicate"]
+        if duplicate == False:
+            cid = response_text["IpfsHash"]
+            
+            tx={
+                "type": "Docs",
+                "doc_name": doc_name,
+                "doc_hash": hash,
+                "ipfs_hash": cid
+            }
+            block.tx = tx
+            block_key = f"tx/{block.index}.json"
+            json_data = json.dumps(block, cls=BlockEncoder)
+            s3.put_object(Body=json_data, Bucket=app.config['FLASKS3_BUCKET_NAME'], Key=block_key)
+        else:
+            print("duplicate file detected")
         auth_session_ids = [auth_sess_id["auth_session_id"] for auth_sess_id in auth_session_table.getsome("doc_id",id)]
         for auth_sess_id in auth_session_ids:
             auth_session_table.deleteone("auth_session_id",auth_sess_id)

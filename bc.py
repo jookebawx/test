@@ -1,20 +1,14 @@
 
+import ecdsa
+import binascii
 import time
 import datetime
 import os
 import json
-import boto3
-import base64
+
 from block import Block
 
-accesskey="QUtJQVdVS09MUUhVUTJBVTM2TVk="
-secretkey="SlQwb3ZXazJETzRoc2pCc2VsZVBVd2llRGJLSk0rSk5yUHExUHltMQ=="
-s3 = boto3.client(
-    's3',
-    aws_access_key_id= base64.b64decode(accesskey.encode('utf-8')).decode('utf-8'),
-    aws_secret_access_key=base64.b64decode(secretkey.encode('utf-8')).decode('utf-8')
-)
-S3_BUCKET_NAME = 'arcanabucket123'
+
 INITIAL_BITS = 0x1e777777
 MAX_32BIT = 0xffffffff
 # AUTH = [Wallet("Authority 1",1), Wallet("Authority 2",1), Wallet("Authority 3",1)]
@@ -90,7 +84,7 @@ class Blockchain:
     def get_retarget_bits(self):
       if len(self.blockchain) == 0 or len(self.blockchain) % 5 != 0:
         return -1
-      expected_time = 140 * 5
+      
 
       counter = int(len(self.blockchain)/5)
 
@@ -101,7 +95,7 @@ class Blockchain:
       first_time = first_block.timestamp.timestamp()
       last_time = last_block.timestamp.timestamp()
       total_time = last_time - first_time
-      
+      expected_time = 60*5
       target = last_block.calc_target()
       
       delta = total_time / expected_time
@@ -145,10 +139,16 @@ class Blockchain:
     
     def load_blocks(self):
         # Load the blocks from a file
-        response= s3.get_object(Bucket=S3_BUCKET_NAME, Key="blocks.dat")
-        current_chain_data = response['Body'].read().decode()
-        current_chain = json.loads(current_chain_data, cls=BlockDecoder)
-        return current_chain
+        try:
+            if os.path.getsize("blocks.dat"):
+                with open("blocks.dat", "rb") as f:
+                    blocks_data = json.load(f, cls=BlockDecoder)
+                    blocks = [b for b in blocks_data if isinstance(b, Block)]
+            else:
+                blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
+        except FileNotFoundError:
+            blocks = [Block(INITIAL_BITS,0,{"type":"Genesis Block"}, datetime.datetime.now(), "", "Shin")]
+        return blocks 
        
      
     def save_block(self,block):
