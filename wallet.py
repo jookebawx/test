@@ -9,7 +9,7 @@ import base64
 
 from bc import *
 
-INITIAL_BITS = 0x1d777777
+INITIAL_BITS = 0x1e777777
 
 
 def generate_private_key():
